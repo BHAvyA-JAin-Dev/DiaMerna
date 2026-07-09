@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DiaMerna — Maternal Wellness</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: { bg: '#0a0a1a', surface: '#12122a', card: '#1a1a3e', border: '#2a2a5e', pink: '#ff6b9d', lavender: '#b388ff', mint: '#69f0ae', warn: '#ff5252' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="bg-cyber-bg text-gray-100 font-['Inter'] min-h-screen">
+
+  <div id="app" class="max-w-2xl mx-auto px-4 py-6 pb-32">
+
+    <!-- Header -->
+    <header class="glass-panel p-4 mb-6 text-center">
+      <h1 class="text-2xl font-bold bg-gradient-to-r from-cyber-pink via-purple-400 to-cyber-mint bg-clip-text text-transparent">DiaMerna</h1>
+      <p class="text-xs text-gray-400 mt-0.5">Gestational Diabetes &amp; Maternal Wellness</p>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="flex gap-1.5 mb-6 overflow-x-auto pb-1 snap-x" id="tabNav">
+      <button class="tab-btn active" data-tab="glucose">🩸 Glucose</button>
+      <button class="tab-btn" data-tab="cycle">🗓️ Cycle</button>
+      <button class="tab-btn" data-tab="meal">🍱 Meals</button>
+      <button class="tab-btn" data-tab="routine">🏃‍♀️ Routine</button>
+      <button class="tab-btn" data-tab="ai">💬 AI Chat</button>
+    </nav>
+
+    <!-- ========== TAB 1: GLUCOSE LOGGER ========== -->
+    <section id="tab-glucose" class="tab-content active">
+      <div class="glass-panel p-5 mb-4">
+        <h2 class="text-lg font-semibold mb-1 flex items-center gap-2"><span class="text-cyber-pink">🩸</span> Glucose Logger</h2>
+        <p class="text-xs text-gray-400 mb-4">Log your blood sugar reading and tag the timing.</p>
+        <div class="flex gap-3 items-end">
+          <div class="flex-1">
+            <label class="text-xs text-gray-400 block mb-1">Reading (mg/dL)</label>
+            <input type="number" id="glucoseInput" placeholder="e.g. 105" min="0" max="500" class="w-full input-field">
+          </div>
+          <button id="logGlucoseBtn" class="btn-primary">Log</button>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-3" id="timingTags">
+          <button class="timing-btn active" data-timing="fasting">🕒 Fasting</button>
+          <button class="timing-btn" data-timing="post-breakfast">🍳 1-Hr Post-Breakfast</button>
+          <button class="timing-btn" data-timing="post-lunch">🥗 2-Hr Post-Lunch</button>
+          <button class="timing-btn" data-timing="post-dinner">🍽️ Post-Dinner</button>
+          <button class="timing-btn" data-timing="bedtime">🌙 Bedtime</button>
+        </div>
+      </div>
+      <div class="glass-panel p-5">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-semibold">Trend</h3>
+          <button id="clearGlucoseBtn" class="text-xs text-cyber-warn/70 hover:text-cyber-warn">Clear All</button>
+        </div>
+        <div id="glucoseChart" class="space-y-2">
+          <p class="text-xs text-gray-500 text-center py-4">No readings logged yet.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TAB 2: CYCLE CALCULATOR ========== -->
+    <section id="tab-cycle" class="tab-content">
+      <div class="glass-panel p-5 mb-4">
+        <h2 class="text-lg font-semibold mb-1 flex items-center gap-2"><span class="text-cyber-lavender">🗓️</span> Cycle &amp; Pregnancy Calculator</h2>
+        <p class="text-xs text-gray-400 mb-4">Track your menstrual cycle or pregnancy milestones.</p>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Last Menstrual Period (LMP)</label>
+            <input type="date" id="lmpInput" class="w-full input-field">
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="checkbox" id="pregnancyMode" class="accent-cyber-pink w-4 h-4">
+              <span>Pregnancy Mode</span>
+            </label>
+            <div class="flex-1">
+              <label class="text-xs text-gray-400 block mb-1">Avg Cycle Length (days)</label>
+              <input type="number" id="cycleLength" value="28" min="20" max="45" class="input-field w-24">
+            </div>
+          </div>
+          <button id="calculateCycleBtn" class="btn-primary w-full">Calculate</button>
+        </div>
+      </div>
+      <div id="cycleResults" class="hidden glass-panel p-5 space-y-3">
+        <h3 class="text-sm font-semibold text-cyber-mint">Results</h3>
+        <div id="cycleOutput" class="text-sm space-y-1"></div>
+      </div>
+    </section>
+
+    <!-- ========== TAB 3: MEAL ANALYZER ========== -->
+    <section id="tab-meal" class="tab-content">
+      <div class="glass-panel p-5 mb-4">
+        <h2 class="text-lg font-semibold mb-1 flex items-center gap-2"><span class="text-cyber-mint">🍱</span> Meal &amp; Ingredient Analyzer</h2>
+        <p class="text-xs text-gray-400 mb-4">Type a meal name and its ingredients to check macros and glycemic warnings.</p>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Meal Name</label>
+            <input type="text" id="mealName" placeholder="e.g. Morning Smoothie" class="w-full input-field">
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Ingredients (comma-separated)</label>
+            <input type="text" id="mealIngredients" placeholder="Spinach, Oat milk, Honey, Mango" class="w-full input-field">
+          </div>
+          <button id="analyzeMealBtn" class="btn-primary w-full">Analyze</button>
+        </div>
+      </div>
+      <div id="mealResults" class="hidden glass-panel p-5 space-y-3"></div>
+    </section>
+
+    <!-- ========== TAB 4: ROUTINE BUILDER ========== -->
+    <section id="tab-routine" class="tab-content">
+      <div class="glass-panel p-5 mb-4">
+        <h2 class="text-lg font-semibold mb-1 flex items-center gap-2"><span class="text-cyber-lavender">🏃‍♀️</span> Daily Health Routine</h2>
+        <p class="text-xs text-gray-400 mb-4">Stay on track with your daily wellness targets.</p>
+      </div>
+
+      <!-- Post-Meal Timer -->
+      <div class="glass-panel p-5 mb-4">
+        <h3 class="text-sm font-semibold mb-2">⏱️ Post-Meal Walk Timer</h3>
+        <p class="text-xs text-gray-400 mb-3">Start a 15-min timer after meals to encourage a light walk.</p>
+        <div class="flex items-center gap-3">
+          <span id="timerDisplay" class="text-3xl font-bold text-cyber-mint tabular-nums">15:00</span>
+          <button id="startTimerBtn" class="btn-primary text-sm">Start</button>
+          <button id="resetTimerBtn" class="text-xs text-gray-400 hover:text-white">Reset</button>
+        </div>
+      </div>
+
+      <!-- Daily Checklist -->
+      <div class="glass-panel p-5 mb-4">
+        <h3 class="text-sm font-semibold mb-3">✅ Daily Targets</h3>
+        <div class="space-y-2" id="dailyChecklist">
+          <label class="check-item"><input type="checkbox" class="accent-cyber-mint"> <span>Low-carb breakfast (before 10am)</span></label>
+          <label class="check-item"><input type="checkbox" class="accent-cyber-mint"> <span>8 glasses of water</span></label>
+          <label class="check-item"><input type="checkbox" class="accent-cyber-mint"> <span>Prenatal vitamins taken</span></label>
+          <label class="check-item"><input type="checkbox" class="accent-cyber-mint"> <span>30-min walk completed</span></label>
+          <label class="check-item"><input type="checkbox" class="accent-cyber-mint"> <span>Blood sugar logged 3x today</span></label>
+        </div>
+      </div>
+
+      <!-- Hydration Tracker -->
+      <div class="glass-panel p-5">
+        <h3 class="text-sm font-semibold mb-3">💧 Hydration — <span id="hydrationCount">0</span>/8 glasses</h3>
+        <div class="flex gap-2 flex-wrap" id="hydrationCups">
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TAB 5: AI CHAT ========== -->
+    <section id="tab-ai" class="tab-content">
+      <div class="glass-panel p-5 mb-4">
+        <h2 class="text-lg font-semibold mb-1 flex items-center gap-2"><span class="text-cyber-pink">💬</span> AI Health Companion</h2>
+        <p class="text-xs text-gray-400 mb-3">Ask anything about gestational diabetes, nutrition, or maternal health.</p>
+        <div class="flex gap-2">
+          <input type="text" id="apiKeyInput" placeholder="Enter your OpenRouter API key" class="flex-1 input-field text-xs">
+          <button id="saveApiKeyBtn" class="btn-primary text-xs whitespace-nowrap">Save Key</button>
+        </div>
+      </div>
+      <div class="glass-panel p-5">
+        <div id="chatMessages" class="h-72 overflow-y-auto mb-3 space-y-2 text-sm pr-1">
+          <div class="chat-msg ai">Hi! I'm your DiaMerna AI assistant. Ask me anything about gestational diabetes, nutrition, or how to manage your blood sugar during pregnancy.</div>
+        </div>
+        <div class="flex gap-2">
+          <input type="text" id="chatInput" placeholder="Type your question here..." class="flex-1 input-field">
+          <button id="sendChatBtn" class="btn-primary">Send</button>
+        </div>
+        <p class="text-[10px] text-gray-500 mt-2">Powered by OpenRouter free tier. This is not a substitute for professional medical advice.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
