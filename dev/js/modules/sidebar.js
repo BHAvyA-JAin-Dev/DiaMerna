@@ -70,7 +70,7 @@
     if (confirm('Clear ALL stored data? This cannot be undone.')) {
       localStorage.clear()
       closeSidebar()
-      setTimeout(() => location.reload(), 300)
+      location.reload()
     }
   })
 })()

@@ -260,6 +260,31 @@ app.post('/api/chat', (req, res) => {
   proxy.end();
 });
 
+/* ===== Admin Routes ===== */
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+
+app.post('/api/admin/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Invalid admin credentials' });
+  const token = jwt.sign({ role: 'admin', email }, JWT_SECRET, { expiresIn: '24h' });
+  res.json({ token });
+});
+
+app.get('/api/admin/stats', async (req, res) => {
+  const h = req.headers['authorization'] || '';
+  const t = h.replace('Bearer ', '');
+  try {
+    const payload = jwt.verify(t, JWT_SECRET);
+    if (payload.role !== 'admin') throw new Error('Not admin');
+  } catch { return res.status(401).json({ error: 'Unauthorized' }); }
+  const db = await getDB();
+  const totalUsers = (db.prepare('SELECT COUNT(*) AS c FROM users').get() || {}).c || 0;
+  const dropboxConnections = (db.prepare('SELECT COUNT(DISTINCT user_id) AS c FROM cloud_tokens WHERE provider = ?').get('dropbox') || {}).c || 0;
+  res.json({ totalUsers, dropboxConnections });
+});
+
 /* Static files */
 app.use(express.static(ROOT, { maxAge: 0, etag: false }));
 app.get('*', (req, res) => {

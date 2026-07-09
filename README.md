@@ -174,6 +174,8 @@ Open [http://localhost:5500](http://localhost:5500)
 | `DROPBOX_CLIENT_SECRET` | For cloud backup | Dropbox OAuth app secret |
 | `OAUTH_REDIRECT_URI` | For Vercel | OAuth callback URL (default: `http://localhost:5500/api/oauth/callback`) |
 | `JWT_SECRET` | Optional | Secret for JWT signing (auto-generated if not set) |
+| `ADMIN_EMAIL` | For admin panel | Owner login email for `/admin` dashboard |
+| `ADMIN_PASSWORD` | For admin panel | Owner login password for `/admin` dashboard |
 | `VERCEL` | Auto-set | Vercel environment flag |
 
 ---
@@ -192,6 +194,8 @@ Open [http://localhost:5500](http://localhost:5500)
 | GET | `/api/oauth/env-status` | Check which OAuth providers are configured |
 | POST | `/api/cloud/upload` | Upload file to connected cloud storage |
 | GET | `/api/files` | List uploaded files |
+| POST | `/api/admin/login` | Admin login (email + password from env vars) |
+| GET | `/api/admin/stats` | Get total users and Dropbox connection count (admin only) |
 | POST | `/api/chat` | Proxy to OpenRouter AI API |
 
 ---

@@ -116,6 +116,12 @@
       Store.set('authToken', d.token)
       Store.set('userEmail', d.user.email)
       Store.set('userName', d.user.name)
+      /* Skip onboarding for returning users (auto-hide its overlay) */
+      if (!Store.get('onboarded', false)) {
+        Store.set('onboarded', true)
+        const ob = document.getElementById('onboardingOverlay')
+        if (ob) { ob.classList.add('done'); ob.style.display = 'none' }
+      }
       hide()
       updateUI(d.user, [], [])
     } catch { msg.textContent = 'Server unavailable. Is the server running?' }
