@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0a0a1a">
+<title>DiaMerna — Maternal Wellness</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class',theme:{extend:{colors:{cyber:{bg:'#0a0a1a',surface:'#12122a',card:'#1a1a3e',border:'#2a2a5e',pink:'#ff6b9d',lavender:'#b388ff',mint:'#69f0ae',warn:'#ff5252'}}}}}</script>
+<link rel="stylesheet" href="css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌸</text></svg>">
+</head>
+<body>
+
+<!-- ===== ONBOARDING OVERLAY ===== -->
+<div id="onboardingOverlay" class="onboarding-overlay">
+  <div class="onboarding-card glass">
+    <div class="text-center mb-4"><span class="text-4xl">🌸</span><h2 class="text-xl font-bold mt-2" style="background:linear-gradient(135deg,var(--pink),var(--lav),var(--mint));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Welcome to DiaMerna</h2><p class="text-xs text-gray-500 mt-1">Let's personalize your experience</p></div>
+    <div class="space-y-3">
+      <div><label class="input-label">Your Name</label><input type="text" id="onName" placeholder="e.g. Priya" class="input w-full" autocomplete="off"></div>
+      <div><label class="input-label">Date of Birth</label><input type="date" id="onDob" class="input w-full"></div>
+      <div><label class="input-label">LMP (Last Menstrual Period)</label><input type="date" id="onLmp" class="input w-full"></div>
+      <div class="flex items-center gap-3"><label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" id="onPreg" class="w-4 h-4 accent-cyber-pink" checked><span>🤰 I'm Pregnant</span></label></div>
+      <div><label class="input-label">Cycle Length (days)</label><input type="number" id="onCycle" value="28" min="20" max="45" class="input w-24"></div>
+      <div><label class="input-label">Health Goal</label>
+        <select id="onGoal" class="input w-full" style="font-family:inherit">
+          <option value="gestational-diabetes">🩸 Gestational Diabetes Management</option>
+          <option value="blood-sugar">📊 Blood Sugar Control</option>
+          <option value="general-wellness">🌿 General Pregnancy Wellness</option>
+          <option value="weight-management">⚖️ Healthy Weight Gain</option>
+        </select>
+      </div>
+      <button id="onStartBtn" class="btn-primary w-full mt-2">✨ Start My Journey</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HEADER ===== -->
+<header class="header glass" id="appHeader">
+  <div class="flex items-center gap-2">
+    <button id="menuBtn" class="icon-btn text-lg" aria-label="Menu">☰</button>
+    <span class="text-xl">🌸</span>
+    <h1 class="logo">DiaMerna</h1>
+  </div>
+  <div class="flex items-center gap-2">
+    <button id="themeBtn" class="icon-btn" aria-label="Theme">☀️</button>
+  </div>
+</header>
+
+<!-- ===== SIDEBAR OVERLAY ===== -->
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+<!-- ===== SIDEBAR DRAWER ===== -->
+<aside id="sidebar" class="sidebar glass">
+  <div class="sidebar-header">
+    <div class="flex items-center gap-2">
+      <span class="text-2xl">🌸</span>
+      <span class="font-bold text-lg" style="background:linear-gradient(135deg,var(--pink),var(--lav),var(--mint));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">DiaMerna</span>
+    </div>
+    <button id="sidebarClose" class="icon-btn text-lg">&times;</button>
+  </div>
+  <div class="sidebar-user" id="sidebarUser">
+    <div class="flex items-center gap-3 mb-2"><span class="text-2xl">👤</span><div><div id="sidebarName" class="font-semibold">Priya</div><div id="sidebarPreg" class="text-xs c-mint">Week 28 · Pregnancy</div></div></div>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="sidebar-cat">📊 DASHBOARD</div>
+    <a class="sidebar-item" data-tab="home">🏠 Home</a>
+    <a class="sidebar-item" data-tab="home" data-scroll="dashGoals">🎯 Daily Goals</a>
+    <a class="sidebar-item" data-tab="home" data-scroll="dashAIInsight">📈 Weekly Score & AI Insight</a>
+
+    <div class="sidebar-cat">🩸 GLUCOSE MANAGEMENT</div>
+    <a class="sidebar-item" data-tab="glucose">📝 Glucose Logger</a>
+    <a class="sidebar-item" data-tab="glucose">📊 Charts & Time-in-Range</a>
+    <a class="sidebar-item" data-tab="glucose">🤖 AI Pattern Detection</a>
+    <a class="sidebar-item" data-tab="glucose">🚨 Emergency Hypoglycemia Guide</a>
+
+    <div class="sidebar-cat">👶 BABY & PREGNANCY</div>
+    <a class="sidebar-item" data-tab="baby">🌱 Baby Growth Timeline</a>
+    <a class="sidebar-item" data-tab="baby">🦶 Kick Counter</a>
+    <a class="sidebar-item" data-tab="baby">🗓️ Cycle & Pregnancy Calculator</a>
+    <a class="sidebar-item" data-tab="baby">📅 Appointment Manager</a>
+
+    <div class="sidebar-cat">💊 HEALTH & WELLNESS</div>
+    <a class="sidebar-item" data-tab="health">💊 Medication Reminders</a>
+    <a class="sidebar-item" data-tab="health">😴 Sleep & Stress Tracker</a>
+    <a class="sidebar-item" data-tab="health">💧 Smart Hydration (2.5L)</a>
+    <a class="sidebar-item" data-tab="health">🦶 Diabetic Foot Check</a>
+
+    <div class="sidebar-cat">🍛 NUTRITION & FOOD</div>
+    <a class="sidebar-item" data-tab="more" data-scroll="calorieAnalyzer">🔥 Calorie Analyzer (AI)</a>
+    <a class="sidebar-item" data-tab="more" data-scroll="sympInput">🤕 Symptom Checker (AI)</a>
+
+    <div class="sidebar-cat">🤖 AI TOOLS</div>
+    <a class="sidebar-item" data-tab="chat">💬 AI Companion Chat (Full Screen)</a>
+    <a class="sidebar-item" data-tab="more" data-scroll="docSummaryCard">👩‍⚕️ Doctor Visit Summary</a>
+
+    <div class="sidebar-cat">⚙️ SETTINGS</div>
+    <a class="sidebar-item" id="sidebarTheme">🌙 Toggle Theme</a>
+    <a class="sidebar-item" id="sidebarEditName">✏️ Edit My Name</a>
+    <a class="sidebar-item" data-tab="more" data-scroll="cloudSettingsCard">☁️ Cloud Storage</a>
+    <a class="sidebar-item" id="sidebarCloudBtn">🔐 My Account</a>
+    <a class="sidebar-item" id="authLogoutBtn" style="color:var(--warn)">🚪 Logout</a>
+    <a class="sidebar-item" id="sidebarClearData" style="color:var(--warn)">🗑️ Clear All Data</a>
+  </nav>
+</aside>
+
+<!-- ===== AUTH OVERLAY ===== -->
+<div id="authOverlay" class="onboarding-overlay" style="z-index:400">
+  <div class="onboarding-card glass" style="max-width:380px">
+    <div class="text-center mb-3"><span class="text-3xl">🔐</span><h2 id="authTitle" class="text-lg font-bold mt-1" style="background:linear-gradient(135deg,var(--pink),var(--lav),var(--mint));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Login</h2></div>
+    <div class="space-y-2">
+      <!-- Register: Name -->
+      <div id="authNameGroup" style="display:none"><input type="text" id="authName" placeholder="Your name" class="input w-full text-sm" autocomplete="off"></div>
+      <!-- Register: PIN -->
+      <div id="authPinGroup" style="display:none"><input type="password" id="authPin" placeholder="Set a 4-6 digit PIN (for password reset)" class="input w-full text-sm" inputmode="numeric" maxlength="6"></div>
+      <!-- Forgot password: hidden by default -->
+      <div id="authForgotGroup" style="display:none">
+        <input type="password" id="authForgotPin" placeholder="Your 4-6 digit PIN" class="input w-full text-sm" inputmode="numeric" maxlength="6">
+        <input type="password" id="authForgotNewPass" placeholder="New password" class="input w-full text-sm">
+        <button id="authForgotCancel" class="text-xs text-gray-500 w-full mt-1" style="background:none;border:none;cursor:pointer;font-family:inherit">← Back to Login</button>
+      </div>
+      <!-- Common fields -->
+      <input type="email" id="authEmail" placeholder="Email address" class="input w-full text-sm" autocomplete="off">
+      <input type="password" id="authPassword" placeholder="Password" class="input w-full text-sm">
+      <div id="authMsg" class="text-xs c-warn text-center"></div>
+      <button id="authSubmitBtn" class="btn-primary w-full text-sm">Login</button>
+      <button id="authToggleBtn" class="text-xs text-gray-500 w-full" style="background:none;border:none;cursor:pointer;font-family:inherit">No account? Register</button>
+      <button id="authForgotLink" class="text-[10px] text-gray-600 w-full" style="background:none;border:none;cursor:pointer;font-family:inherit">🔑 Forgot password?</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN ===== -->
+<main id="app" class="app-content">
+
+  <!-- ===== TAB: HOME ===== -->
+  <section class="section active" data-tab="home">
+    <div class="card glass" id="dashGreeting">
+      <div class="flex justify-between items-start">
+        <div><div class="text-xs text-gray-500">Welcome back</div><div id="dashName" class="text-xl font-bold">🌸 Priya</div><div id="dashPregWeek" class="text-sm c-mint">Week 28 · Pregnancy</div></div>
+        <div id="dashScore" class="text-center"><div class="text-2xl font-black c-pink">89</div><div class="text-[9px] text-gray-500">WEEKLY</div></div>
+      </div>
+    </div>
+    <div class="card glass" id="dashStats"><div class="grid grid-cols-3 gap-2" id="dashStatsGrid"></div></div>
+    <div class="card glass">
+      <h3 class="text-sm font-bold mb-3">🎯 Today's Goals</h3>
+      <div class="space-y-2" id="dashGoals">
+        <label class="chk-item"><input type="checkbox" value="walk20"><span>🚶‍♀️ Walk 20 min</span></label>
+        <label class="chk-item"><input type="checkbox" value="water8"><span>💧 2.5L Water</span></label>
+        <label class="chk-item"><input type="checkbox" value="medicine"><span>💊 Medicine</span></label>
+        <label class="chk-item"><input type="checkbox" value="sugarCheck"><span>🩸 Sugar Check 3x</span></label>
+        <label class="chk-item"><input type="checkbox" value="healthyMeal"><span>🥗 Healthy Meal</span></label>
+      </div>
+      <div id="dashProgress" class="mt-3"><div class="flex justify-between text-xs text-gray-500 mb-1"><span>Progress</span><span id="dashPct">0%</span></div><div class="progress-bar"><div id="dashBar" class="progress-fill" style="width:0%;background:linear-gradient(90deg,#ff6b9d,#b388ff)"></div></div></div>
+    </div>
+    <div class="card glass">
+      <h3 class="text-sm font-bold mb-2">📈 Weekly Score</h3>
+      <div id="dashAIInsight" class="text-xs text-gray-400">Track your glucose, hydration, walks, and medicine to see your weekly score improve.</div>
+    </div>
+  </section>
+
+  <!-- ===== TAB: GLUCOSE ===== -->
+  <section class="section" data-tab="glucose">
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">🩸</span><h2>Glucose Logger</h2></div>
+      <div class="flex gap-3 items-end">
+        <div class="flex-1"><label class="input-label">Blood Glucose (mg/dL)</label><input type="number" id="gInp" placeholder="e.g. 105" min="0" max="500" inputmode="numeric" class="input" autocomplete="off"></div>
+        <button id="gBtn" class="btn-primary">Log</button>
+      </div>
+      <div class="flex flex-wrap gap-1.5 mt-3"> <button class="tm-btn active" data-t="fasting">🕒 Fasting</button> <button class="tm-btn" data-t="post-breakfast">🍳 Breakfast</button> <button class="tm-btn" data-t="post-lunch">🥗 Lunch</button> <button class="tm-btn" data-t="post-dinner">🍽️ Dinner</button> <button class="tm-btn" data-t="bedtime">🌙 Bedtime</button> </div>
+    </div>
+
+    <div class="card glass">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold">📈 Trends</h3>
+        <div class="flex gap-1" id="chartRangeBtns"><button class="range-btn active" data-r="7">7d</button><button class="range-btn" data-r="30">30d</button><button class="range-btn" data-r="all">All</button></div>
+      </div>
+      <div id="gChart" class="mb-3"></div>
+      <div id="gStats" class="grid grid-cols-2 gap-2"></div>
+      <div id="gLog" class="space-y-1 mt-2"></div>
+    </div>
+
+    <div class="card glass" id="emergencyCard" style="display:none">
+      <div class="text-center py-4">
+        <div class="text-4xl mb-2">🚨</div>
+        <h3 class="text-lg font-black c-warn">Low Blood Sugar</h3>
+        <p class="text-sm text-gray-300 mt-1">Glucose below 70 mg/dL</p>
+        <div class="mt-3 p-3 rounded-xl" style="background:rgba(255,82,82,0.1);border:1px solid rgba(255,82,82,0.2)">
+          <p class="text-xs font-semibold c-warn mb-2">⚡ Immediate Steps:</p>
+          <ol class="text-xs text-gray-300 space-y-1 text-left" style="list-style:decimal;padding-left:18px">
+            <li>Eat <strong>15g fast-acting carbs</strong> (3-4 glucose tablets, 1/2 cup juice, 1 tbsp honey)</li>
+            <li><strong>Wait 15 minutes</strong></li>
+            <li><strong>Recheck</strong> glucose</li>
+            <li>If still &lt;70, repeat step 1</li>
+            <li class="c-warn font-semibold">Seek emergency care if symptoms worsen or you cannot safely treat yourself</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">🤖</span><h3>AI Pattern Insight</h3></div>
+      <div id="gAIinsight" class="text-xs text-gray-400">Log more readings to get AI-powered pattern detection.</div>
+    </div>
+  </section>
+
+  <!-- ===== TAB: BABY ===== -->
+  <section class="section" data-tab="baby">
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">👶</span><h2>Baby Growth Timeline</h2></div>
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs text-gray-500">Week</span>
+        <div class="flex gap-1"><button id="babyWeekPrev" class="icon-btn text-sm">-</button><span id="babyWeekDisplay" class="text-lg font-bold c-mint w-16 text-center">26</span><button id="babyWeekNext" class="icon-btn text-sm">+</button></div>
+      </div>
+      <div id="babyGrowthCard" class="text-center py-4">
+        <div id="babyFruit" class="text-5xl mb-2">🥭</div>
+        <div id="babyFruitName" class="text-lg font-semibold">Zucchini</div>
+        <div class="grid grid-cols-2 gap-2 mt-3">
+          <div class="p-2 rounded-xl" style="background:rgba(255,255,255,0.04)"><div class="text-xs text-gray-500">Weight</div><div id="babyWeight" class="font-bold c-pink">760 g</div></div>
+          <div class="p-2 rounded-xl" style="background:rgba(255,255,255,0.04)"><div class="text-xs text-gray-500">Length</div><div id="babyLength" class="font-bold c-lav">35.6 cm</div></div>
+        </div>
+      </div>
+      <div class="progress-bar"><div id="babyProgress" class="progress-fill" style="width:65%;background:linear-gradient(90deg,#ff6b9d,#b388ff,#69f0ae)"></div></div>
+      <div class="flex justify-between text-[10px] text-gray-500 mt-1"><span>Week 4</span><span>Week 40</span></div>
+    </div>
+
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">🦶</span><h3>Kick Counter</h3></div>
+      <p class="text-xs text-gray-500 mb-3">Count 10 kicks within 2 hours (after a meal is best).</p>
+      <div class="flex items-center gap-3 mb-2">
+        <button id="kickBtn" class="btn-primary text-lg">👶 Record Kick</button>
+        <span id="kickCount" class="text-2xl font-bold c-pink">0</span>
+        <span class="text-xs text-gray-500">/10</span>
+        <button id="kickReset" class="text-xs text-gray-500 hover:text-white ml-auto">Reset</button>
+      </div>
+      <div class="progress-bar"><div id="kickBar" class="progress-fill" style="width:0%;background:#ff6b9d"></div></div>
+      <div id="kickTime" class="text-[10px] text-gray-500 mt-1">Started: --</div>
+    </div>
+
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">🗓️</span><h3>Cycle & Pregnancy</h3></div>
+      <div class="space-y-2">
+        <div><label class="input-label">LMP</label><input type="date" id="lmpInput" class="input w-full"></div>
+        <div class="flex gap-2"><label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" id="pregMode" class="w-4 h-4 accent-cyber-pink"><span>🤰 Pregnant</span></label><div><label class="input-label">Cycle</label><input type="number" id="cycleLen" value="28" min="20" max="45" class="input w-20"></div></div>
+        <button id="cycleBtn" class="btn-primary w-full">Calculate</button>
+      </div>
+      <div id="cycleOut" class="mt-3 space-y-2"></div>
+    </div>
+
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">📅</span><h3>Appointments</h3></div>
+      <div class="space-y-2 mb-3" id="aptList"></div>
+      <div class="flex flex-col gap-2"><input type="text" id="aptInput" placeholder="What? (e.g. Ultrasound)" class="input w-full text-sm">
+        <div class="flex gap-2"><input type="date" id="aptDate" class="input flex-1 text-sm"><input type="time" id="aptTime" class="input w-24 text-sm"><button id="aptAddBtn" class="btn-primary text-sm">Add</button></div></div>
+    </div>
+  </section>
+
+  <!-- ===== TAB: HEALTH ===== -->
+  <section class="section" data-tab="health">
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">💊</span><h2>Medication Reminder</h2><button id="medResetBtn" class="text-[9px] ml-auto" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px 10px;color:var(--text-sec);cursor:pointer;font-family:inherit">↻ Reset</button></div>
+      <div id="medList" class="space-y-2"></div>
+      <div id="medPct" class="mt-3 text-center text-xs text-gray-500">0% completed today</div>
+      <details class="mt-3" style="cursor:pointer"><summary class="text-xs c-lav font-semibold">➕ Add Custom Medication</summary>
+        <div class="flex flex-col gap-2 mt-2">
+          <input type="text" id="medNewName" placeholder="Medicine name" class="input w-full text-sm">
+          <div class="flex gap-2"><input type="text" id="medNewDose" placeholder="Dose (e.g. 250mg)" class="input flex-1 text-sm"><input type="text" id="medNewTime" placeholder="Time (e.g. After lunch)" class="input flex-1 text-sm"><button id="medAddBtn" class="btn-primary text-sm">Add</button></div>
+        </div>
+      </details>
+    </div>
+
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">😴</span><h3>Sleep & Stress</h3></div>
+      <div class="space-y-3">
+        <div><label class="text-xs text-gray-500 block mb-1">How did you sleep?</label><div id="sleepStars" class="flex gap-1 text-2xl cursor-pointer" data-val="0">☆☆☆☆☆</div></div>
+        <div><label class="text-xs text-gray-500 block mb-1">How stressed are you?</label><div id="stressBtns" class="flex gap-2 text-2xl"><button data-v="1">😊</button><button data-v="2">😐</button><button data-v="3">😟</button><button data-v="4">😭</button></div></div>
+        <button id="sleepLogBtn" class="btn-primary text-sm">Log Tonight</button>
+        <div id="sleepHistory" class="text-xs text-gray-500"></div>
+      </div>
+    </div>
+
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">💧</span><h3>Smart Hydration</h3><button id="hydResetBtn" class="text-[9px] ml-auto" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px 10px;color:var(--text-sec);cursor:pointer;font-family:inherit">↻ Reset</button></div>
+      <div class="text-center mb-2"><span class="text-4xl font-bold c-mint" id="hydL">1.5</span><span class="text-gray-500"> / 2.5 L</span></div>
+      <div class="progress-bar h-4 mb-2"><div id="hydBar" class="progress-fill" style="width:60%;background:linear-gradient(90deg,#4fc3f7,#29b6f6,#0288d1)"></div></div>
+      <div class="flex gap-2 flex-wrap justify-center" id="hydBtns"><button class="btn-primary text-xs" data-a="0.25">+250ml</button><button class="btn-primary text-xs" data-a="0.5">+500ml</button><button class="btn-primary text-xs" data-a="1">+1L</button></div>
+      <div id="hydBadges" class="flex gap-2 mt-3 justify-center text-xs"></div>
+    </div>
+
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">🦶</span><h3>Diabetic Foot Check</h3></div>
+      <p class="text-xs text-gray-500 mb-3">Check your feet weekly. Tap any concern.</p>
+      <div class="grid grid-cols-2 gap-2" id="footChecks">
+        <button class="foot-btn" data-f="cuts">Cuts</button>
+        <button class="foot-btn" data-f="swelling">Swelling</button>
+        <button class="foot-btn" data-f="redness">Redness</button>
+        <button class="foot-btn" data-f="pain">Pain</button>
+      </div>
+      <div id="footAdvice" class="mt-3 text-xs" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION: CHAT (full-screen) ===== -->
+  <section class="section" data-tab="chat" style="padding:0 12px">
+    <div class="card glass" style="display:flex;flex-direction:column;min-height:calc(100dvh - 100px);margin-bottom:0">
+      <div class="card-header" style="flex-shrink:0"><span class="text-xl">💬</span><h2>AI Companion</h2><button id="chatFullClose" class="icon-btn text-sm ml-auto">&times;</button></div>
+      <div id="chatFullMsgs" class="chat-box" style="flex:1;height:auto;min-height:200px;max-height:none;padding:8px 0"></div>
+      <div class="flex gap-2 mt-3" style="flex-shrink:0"><input type="text" id="chatFullInp" placeholder="Ask anything about your pregnancy, diet, glucose..." class="input flex-1 text-sm" autocomplete="off"><button id="chatFullSend" class="btn-primary text-sm">Send</button></div>
+    </div>
+  </section>
+
+  <!-- ===== TAB: MORE ===== -->
+  <section class="section" data-tab="more">
+    <div class="card glass" id="calorieAnalyzer">
+      <div class="card-header"><span class="text-xl">🔥</span><h2>AI Calorie Analyzer</h2></div>
+      <p class="text-xs text-gray-500 mb-3">Type any food to get calories, protein, carbs, fat, and fiber via AI.</p>
+      <div class="flex gap-2 mb-2">
+        <input type="text" id="calInp" placeholder="e.g. 1 cup basmati rice, 100g paneer" class="input flex-1 text-sm" autocomplete="off">
+        <input type="number" id="calQty" placeholder="g" class="input w-16 text-sm" min="1" max="5000" inputmode="numeric" autocomplete="off">
+        <button id="calAnalyzeBtn" class="btn-primary text-sm">🔍</button>
+      </div>
+      <div id="calResult" class="text-xs text-gray-500"></div>
+      <div id="calHistory" class="mt-3 space-y-1"></div>
+    </div>
+
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">🤕</span><h3>Symptom Checker (AI)</h3></div>
+      <label class="input-label text-[11px]">Select symptoms you're experiencing</label>
+      <div class="flex flex-wrap gap-1.5 mb-3" id="sympBtns"></div>
+      <label class="input-label text-[11px]">🌡️ Body Temperature (°C)</label>
+      <input type="number" id="sympTemp" class="input w-24 text-sm" placeholder="37.0" step="0.1" min="35" max="43">
+      <label class="input-label text-[11px] mt-2">Other symptoms not listed above</label>
+      <textarea id="sympCustom" class="input w-full text-sm" rows="2" placeholder="e.g. back pain, frequent urination..." style="resize:vertical;min-height:45px;font-family:inherit"></textarea>
+      <div class="flex items-center gap-2 mt-2"><label class="text-[10px] text-gray-500 flex items-center gap-1 cursor-pointer"><input type="checkbox" id="sympIncludeGlucose" checked> Include glucose</label><label class="text-[10px] text-gray-500 flex items-center gap-1 cursor-pointer"><input type="checkbox" id="sympIncludeMeds" checked> Include meds</label></div>
+      <button id="sympAnalyzeBtn" class="btn-primary w-full text-sm mt-2">🤖 Analyze Symptoms with AI</button>
+      <div id="sympResult" class="mt-3 text-xs leading-relaxed" style="display:none"></div>
+    </div>
+
+    <div class="card glass" id="cloudSettingsCard">
+      <div class="card-header"><span class="text-xl">☁️</span><h3>Cloud Storage</h3></div>
+      <div id="sidebarCloudStatus" class="text-[10px] text-gray-500 mb-2"></div>
+      <div id="cloudOauthStatus" class="text-[10px] text-gray-500 mb-2"></div>
+
+      <div id="cloudProvidersConfig" class="space-y-3"></div>
+
+      <div class="flex items-center gap-2 my-3"><hr style="flex:1;border-color:var(--border)"><span class="text-[10px] text-gray-600">OR manual token entry</span><hr style="flex:1;border-color:var(--border)"></div>
+
+      <label class="input-label text-[11px]">Provider</label>
+      <select id="cloudProvider" class="input w-full text-sm" style="font-family:inherit">
+        <option value="dropbox">Dropbox</option>
+      </select>
+      <label class="input-label text-[11px] mt-2">Access Token (manual)</label>
+      <input type="text" id="cloudAccessToken" class="input w-full text-sm" placeholder="Paste your OAuth access token">
+      <label class="input-label text-[11px] mt-2">Refresh Token (optional)</label>
+      <input type="text" id="cloudRefreshToken" class="input w-full text-sm" placeholder="Paste refresh token if available">
+      <div id="cloudMsg" class="text-xs text-gray-500 mt-2"></div>
+      <button id="cloudConnectBtn" class="btn-primary w-full text-sm mt-2">🔗 Connect (Manual)</button>
+
+      <details class="mt-2 text-[10px] text-gray-500" style="cursor:pointer"><summary>📖 Dropbox Setup Guide</summary>
+        <div class="mt-2 leading-relaxed p-2 rounded-lg" style="background:rgba(255,255,255,0.03)">
+          <strong class="c-lav">📦 Dropbox One-Tap OAuth</strong><br>
+          The app owner has already configured Dropbox. To connect your account:<br><br>
+          1. Make sure you're logged in to your Dropbox account in the browser<br>
+          2. Click <strong>"🔗 Connect to Dropbox"</strong> above<br>
+          3. Authorize the DiaMerna app (App folder access only)<br>
+          4. You'll be redirected back automatically<br><br>
+          <span class="text-gray-600">The Dropbox app uses <strong>App folder</strong> permission type — files are stored in a dedicated <code>DiaMerna</code> folder, not your entire Dropbox.</span>
+        </div>
+      </details>
+    </div>
+
+    <div class="card glass" id="docSummaryCard">
+      <div class="card-header"><span class="text-xl">👩‍⚕️</span><h3>Doctor Visit Summary</h3></div>
+      <button id="docSummaryBtn" class="btn-primary w-full text-sm mb-2">📄 Generate Report</button>
+      <div id="docSummary" class="text-xs text-gray-500"></div>
+    </div>
+
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">📁</span><h3>Upload Reports</h3></div>
+      <label class="input-label text-[11px]">Upload lab reports, test PDFs, or doctor notes (text files)</label>
+      <input type="file" id="reportFileInput" accept=".txt,.csv" class="input w-full text-sm" style="padding:8px">
+      <label class="input-label text-[11px] mt-2">Or paste report text</label>
+      <textarea id="reportPasteInput" class="input w-full text-sm" rows="3" placeholder="Paste your lab report text here..." style="resize:vertical;min-height:50px;font-family:inherit"></textarea>
+      <button id="uploadReportBtn" class="btn-primary w-full text-sm mt-2">📤 Upload & Analyze with AI</button>
+      <div id="uploadedReports" class="mt-2 space-y-1"></div>
+      <div id="reportAnalysis" class="mt-2 text-xs leading-relaxed" style="display:none"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===== FAB AI Chat ===== -->
+<button id="aiFab" class="fab" aria-label="AI Chat">💬</button>
+<div id="aiPanel" class="fab-panel glass">
+  <div class="flex items-center justify-between mb-2"><span class="font-semibold text-sm">💬 AI Companion</span><button id="aiClose" class="text-lg leading-none text-gray-500 hover:text-white">&times;</button></div>
+  <div id="aiFabMsgs" class="chat-box" style="height:160px"></div>
+  <div class="flex gap-2 mt-2"><input type="text" id="aiFabInp" placeholder="Ask anything..." class="input flex-1 text-sm" autocomplete="off"><input type="hidden" id="aiFabKey"><button id="aiFabSend" class="btn-primary text-sm px-3">Send</button></div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/utils/constants.js"></script>
+<script src="js/utils/storage.js"></script>
+<script src="js/utils/helpers.js"></script>
+<script src="js/modules/glucose-logger.js"></script>
+<script src="js/modules/baby-tracker.js"></script>
+<script src="js/modules/health-tracker.js"></script>
+<script src="js/modules/dashboard.js"></script>
+<script src="js/modules/more-menu.js"></script>
+<script src="js/modules/ai-chat.js"></script>
+<script src="js/modules/theme-switcher.js"></script>
+<script src="js/modules/swipe-nav.js"></script>
+<script src="js/modules/sidebar.js"></script>
+<script src="js/modules/calorie-analyzer.js"></script>
+<script src="js/modules/onboarding.js"></script>
+<script src="js/modules/auth.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

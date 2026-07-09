@@ -1,0 +1,26 @@
+{
+  "name": "compition",
+  "version": "1.0.0",
+  "description": "A privacy-first maternal metabolic wellness and gestational diabetes tracking application.",
+  "main": "serve.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BHAvyA-JAin-Dev/DiaMerna.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BHAvyA-JAin-Dev/DiaMerna/issues"
+  },
+  "homepage": "https://github.com/BHAvyA-JAin-Dev/DiaMerna#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.11.1",
+    "jsonwebtoken": "^9.0.3",
+    "uuid": "^14.0.1"
+  }
+}

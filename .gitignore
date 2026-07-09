@@ -1,0 +1,21 @@
+# Environment files (actual secrets — NOT committed)
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+
+# SQLite database
+diamerna.db
+*.db-shm
+*.db-wal
+
+# Vercel
+.vercel
+
+# User uploads (reports with personal data)
+github/uploads/
+dev/uploads/
