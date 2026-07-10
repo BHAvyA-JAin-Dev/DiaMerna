@@ -25,12 +25,17 @@ try {
   }
 } catch (e) { console.warn('⚠️ No encrypted keys found:', e.message) }
 
-/* --- Paths --- */
+/* --- Configuration --- */
+/* The shared backend server URL — all API calls go here.
+   Set SERVER_URL env var at build time or default to the public server.
+   Web / Desktop / Mobile all connect to this same server. */
+const SERVER_URL = process.env.SERVER_URL || SECRETS.SERVER_URL || 'http://127.0.0.1:3030'
 const WEBAPP_PATH = process.env.NODE_ENV === 'development'
   ? path.join(__dirname, '..', 'dev')
   : path.join(process.resourcesPath, 'webapp')
 const ICON_PATH = path.join(__dirname, 'icon.png')
-const PORT = 5199
+const LOCAL_PORT = 5199
+
 const MIME = {
   '.html': 'text/html;charset=utf-8',
   '.js': 'application/javascript;charset=utf-8',
@@ -47,96 +52,89 @@ const MIME = {
 
 let mainWindow, tray, server
 
-/* --- Static file server with injected config --- */
+/* --- Inject SERVER_URL into config.js so all API calls go to the shared server --- */
+function injectServerUrl(content) {
+  return content.replace(/Cfg\.URL\s*=\s*'.*?'/, "Cfg.URL = '" + SERVER_URL.replace(/\/+$/, '') + "'")
+    .replace(/var API_URL\s*=.*/, "var API_URL = Cfg.URL;")
+}
+
+/* --- Static file server (local, for fast UI) --- */
 function serveFile(req, res) {
   let urlPath = new URL(req.url, 'http://localhost').pathname
   if (urlPath === '/') urlPath = '/index.html'
   const filePath = path.join(WEBAPP_PATH, urlPath)
   const ext = path.extname(filePath).toLowerCase()
 
-  /* Inject API key into config.js at runtime */
-  if (urlPath === '/js/config.js' && SECRETS.OPENROUTER_API_KEY) {
+  /* Inject server URL into config.js at runtime */
+  if (urlPath === '/js/config.js') {
     const cfgPath = path.join(WEBAPP_PATH, 'js', 'config.js')
     if (fs.existsSync(cfgPath)) {
-      let content = fs.readFileSync(cfgPath, 'utf8')
-      content = content.replace(/API_KEY\s*=\s*'.*?'/, `API_KEY = '${SECRETS.OPENROUTER_API_KEY}'`)
       res.writeHead(200, { 'Content-Type': 'application/javascript' })
-      return res.end(content)
+      return res.end(injectServerUrl(fs.readFileSync(cfgPath, 'utf8')))
     }
   }
 
   fs.readFile(filePath, (err, data) => {
-    if (err) {
-      res.writeHead(404, { 'Content-Type': 'text/plain' })
-      return res.end('Not Found')
-    }
+    if (err) { res.writeHead(404, { 'Content-Type': 'text/plain' }); return res.end('Not Found') }
     res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache' })
     res.end(data)
   })
 }
 
-/* --- API proxy for chat --- */
-function proxyChat(req, res) {
-  const apiKey = SECRETS.OPENROUTER_API_KEY
-  if (!apiKey) {
-    res.writeHead(500, { 'Content-Type': 'application/json' })
-    return res.end(JSON.stringify({ error: 'API key not configured in this build' }))
+/* --- Proxy API requests to the shared backend server --- */
+function proxyToServer(req, res) {
+  const targetUrl = SERVER_URL.replace(/\/+$/, '') + req.url
+  const parsed = new URL(targetUrl)
+  const isHttps = parsed.protocol === 'https:'
+  const mod = isHttps ? https : http
+
+  let body = null
+  if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+    body = []
+    req.on('data', c => body.push(c))
+    req.on('end', () => {
+      body = Buffer.concat(body)
+      doProxy()
+    })
+  } else {
+    doProxy()
   }
-  let body = ''
-  req.on('data', c => body += c)
-  req.on('end', () => {
-    try {
-      const parsed = JSON.parse(body)
-      const postData = JSON.stringify({
-        model: parsed.model || 'nvidia/nemotron-3-super-120b-a12b:free',
-        messages: parsed.messages || [],
-        max_tokens: parsed.max_tokens || 512
-      })
-      const opts = {
-        hostname: 'openrouter.ai',
-        path: '/api/v1/chat/completions',
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + apiKey,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(postData)
-        },
-        timeout: 30000
-      }
-      const r = https.request(opts, r2 => {
-        let d = ''
-        r2.on('data', c => d += c)
-        r2.on('end', () => {
-          res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.end(d)
-        })
-      })
-      r.on('error', () => {
-        res.writeHead(502, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'Upstream error' }))
-      })
-      r.write(postData)
-      r.end()
-    } catch {
-      res.writeHead(400, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ error: 'Bad request' }))
+
+  function doProxy() {
+    const opts = {
+      hostname: parsed.hostname,
+      port: parsed.port || (isHttps ? 443 : 80),
+      path: parsed.pathname + parsed.search,
+      method: req.method,
+      headers: { ...req.headers, host: parsed.hostname },
+      timeout: 30000
     }
-  })
+    if (body && body.length > 0) opts.headers['Content-Length'] = Buffer.byteLength(body)
+    else if (opts.headers['content-length']) delete opts.headers['content-length']
+
+    const r = mod.request(opts, r2 => {
+      res.writeHead(r2.statusCode, r2.headers)
+      r2.pipe(res)
+    })
+    r.on('error', () => {
+      res.writeHead(502, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'Server unreachable. Is the backend running at ' + SERVER_URL + '?' }))
+    })
+    if (body && body.length > 0) r.write(body)
+    r.end()
+  }
 }
 
 function startServer() {
   return new Promise(resolve => {
     server = http.createServer((req, res) => {
-      if (req.method === 'POST' && req.url === '/api/chat') return proxyChat(req, res)
-      /* Health check for reminders */
-      if (req.url === '/api/health') {
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        return res.end(JSON.stringify({ status: 'ok', version: '1.0.0' }))
-      }
+      /* API requests go to the shared backend server */
+      if (req.url.startsWith('/api/')) return proxyToServer(req, res)
       serveFile(req, res)
     })
-    server.listen(PORT, '127.0.0.1', () => {
-      console.log(`🌐 Server at http://127.0.0.1:${PORT}`)
+    server.listen(LOCAL_PORT, '127.0.0.1', () => {
+      console.log('🌐 Local UI: http://127.0.0.1:' + LOCAL_PORT)
+      console.log('🔗 Backend: ' + SERVER_URL)
       resolve()
     })
   })
@@ -181,7 +179,7 @@ function createWindow() {
     show: false,
     backgroundColor: '#0a0a1a'
   })
-  mainWindow.loadURL('http://127.0.0.1:' + PORT)
+  mainWindow.loadURL('http://127.0.0.1:' + LOCAL_PORT)
   mainWindow.once('ready-to-show', () => { mainWindow.show() })
   mainWindow.on('close', (e) => {
     if (!app.isQuitting) { e.preventDefault(); mainWindow.hide() }

@@ -1,0 +1,17 @@
+{
+  "name": "diamerna-server",
+  "version": "1.0.0",
+  "description": "DiaMerna — Persistent backend server (single source of truth)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.3"
+  }
+}
