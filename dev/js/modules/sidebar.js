@@ -72,21 +72,7 @@
     if (overlay) { overlay.style.display = 'flex'; document.getElementById('authMsg').textContent = '' }
   })
 
-  document.getElementById('sidebarEditName').addEventListener('click', () => {
-    closeSidebar()
-    setTimeout(() => {
-      const n = prompt('Your name:', Store.get('userName', '') || 'Priya')
-      if (n && n.trim()) {
-        Store.set('userName', n.trim())
-        document.querySelectorAll('[id^="dashName"], #sidebarName').forEach(el => {
-          if (el.id === 'sidebarName') el.textContent = n.trim()
-          else el.textContent = '🌸 ' + n.trim()
-        })
-      }
-    }, 350)
-  })
-
-  document.getElementById('sidebarClearData').addEventListener('click', () => {
+  document.getElementById('sidebarClearData')?.addEventListener('click', () => {
     if (confirm('Clear ALL stored data? This cannot be undone.')) {
       localStorage.clear()
       closeSidebar()

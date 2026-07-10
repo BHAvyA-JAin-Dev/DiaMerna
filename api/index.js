@@ -423,8 +423,11 @@ const rateLimitMap = new Map();
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) }
     };
     const proxy = https.request(opts, proxyRes => {
-      res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
-      proxyRes.pipe(res);
+      let data = '';
+      proxyRes.on('data', c => data += c);
+      proxyRes.on('end', () => {
+        try { const j = JSON.parse(data); if (j.error) j.error.message = j.error.message?.replace(/sk-[a-zA-Z0-9]+/g, '[REDACTED]') || 'AI service unavailable'; res.status(proxyRes.statusCode).json(j); } catch { res.status(proxyRes.statusCode).send(data); }
+      });
     });
     proxy.on('error', () => { res.status(502).json({ error: 'proxy failed' }) });
     proxy.write(body);

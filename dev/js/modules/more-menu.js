@@ -294,8 +294,8 @@
         document.getElementById('profMsg').textContent = '✅ Saved!'
         document.getElementById('profileEditForm').style.display = 'none'
         loadProfile()
-        /* Also update local onboarding data */
         Store.set('userName', name)
+        Store.set('profile', { name, dob: body.dob, lmp: body.lmp, isPregnant: body.is_pregnant })
         if (body.lmp) Store.set('lmp', body.lmp)
         if (body.is_pregnant) { Store.set('pregnant', true); if (body.lmp) { const pw = pregnancyWeek(body.lmp); Store.set('pregWeek', pw.w) } }
         setTimeout(() => document.getElementById('profMsg').textContent = '', 2000)

@@ -30,9 +30,12 @@
 
   function ensureOnboarded() {
     if (!Store.get('onboarded', false)) {
-      Store.set('onboarded', true)
-      const ob = document.getElementById('onboardingOverlay')
-      if (ob) { ob.classList.add('done'); ob.style.display = 'none' }
+      const prof = Store.get('profile', {})
+      if (prof.name) {
+        Store.set('onboarded', true)
+        const ob = document.getElementById('onboardingOverlay')
+        if (ob) { ob.classList.add('done'); ob.style.display = 'none' }
+      }
     }
   }
 
@@ -132,6 +135,7 @@
       Store.set('authToken', d.token)
       Store.set('userEmail', d.user.email)
       Store.set('userName', d.user.name)
+      Store.set('profile', { name: d.user.name, dob: '', lmp: '', isPregnant: true })
       hide()
       updateUI(d.user, [], [])
     } catch { msg.textContent = 'Server unavailable. Is the server running?' }
