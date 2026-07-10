@@ -1,8 +1,7 @@
-/* Database abstraction layer — Turso (libSQL) with sql.js fallback
-   All methods return promises for consistent async usage. */
 const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 
 module.exports = async function createDB() {
   const TURSO_URL = process.env.TURSO_DB_URL;
@@ -10,17 +9,73 @@ module.exports = async function createDB() {
 
   if (TURSO_URL && TURSO_TOKEN) {
     try {
-      const { createClient } = require('@libsql/client');
-      const turso = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN });
-      await turso.execute('SELECT 1');
-      console.log('🟢 Turso connected');
+      const httpUrl = TURSO_URL.replace(/^libsql:/, 'https:') + '/v2/pipeline';
+      const auth = 'Bearer ' + TURSO_TOKEN;
+
+      function toTursoArgs(params) {
+        if (!params || !params.length) return undefined;
+        return params.map(v => {
+          if (v === null || v === undefined) return { type: 'null', value: null };
+          if (typeof v === 'number') return { type: 'integer', value: String(v) };
+          return { type: 'text', value: String(v) };
+        });
+      }
+
+      async function query(sql, params) {
+        const body = JSON.stringify({
+          requests: [{ type: 'execute', stmt: { sql, args: toTursoArgs(params) } }]
+        });
+        return new Promise((resolve, reject) => {
+          const u = new URL(httpUrl);
+          const opts = {
+            hostname: u.hostname, path: u.pathname, method: 'POST',
+            headers: { 'Authorization': auth, 'Content-Type': 'application/json' }
+          };
+          const r = https.request(opts, res => {
+            let d = '';
+            res.on('data', c => d += c);
+            res.on('end', () => {
+              try { resolve(JSON.parse(d)) } catch { reject(new Error('bad response')) }
+            });
+          });
+          r.on('error', reject);
+          r.write(body);
+          r.end();
+        });
+      }
+
+      await query('SELECT 1');
+      console.log('🟢 Turso HTTP connected');
+
       return makeAsync({
-        exec(sql) { return turso.execute(sql) },
+        async exec(sql) { const r = await query(sql); const e = r.results?.[0]?.response?.result?.error || r.results?.[0]?.error; if (e) throw new Error(typeof e === 'string' ? e : e.message); },
         prepare(sql) {
           return {
-            run(...params) { return turso.execute({ sql, args: params.length ? params : undefined }) },
-            async get(...params) { const r = await turso.execute({ sql, args: params.length ? params : undefined }); return r.rows[0] || null },
-            async all(...params) { const r = await turso.execute({ sql, args: params.length ? params : undefined }); return r.rows }
+            async run(...p) { const r = await query(sql, p.length ? p : undefined); const e = r.results?.[0]?.response?.result?.error || r.results?.[0]?.error; if (e) throw new Error(typeof e === 'string' ? e : e.message); },
+            async get(...p) {
+              const r = await query(sql, p.length ? p : undefined);
+              const res = r.results?.[0];
+              const resp = res?.response?.result || res?.result || {};
+              if (res?.error) throw new Error(typeof res.error === 'string' ? res.error : res.error.message);
+              const cols = (resp.cols || []).map(c => c.name || c);
+              const row = resp.rows?.[0];
+              if (!row) return null;
+              const obj = {};
+              cols.forEach((c, i) => obj[c] = row[i]?.value !== undefined ? row[i].value : row[i]);
+              return obj;
+            },
+            async all(...p) {
+              const r = await query(sql, p.length ? p : undefined);
+              const res = r.results?.[0];
+              const resp = res?.response?.result || res?.result || {};
+              if (res?.error) throw new Error(typeof res.error === 'string' ? res.error : res.error.message);
+              const cols = (resp.cols || []).map(c => c.name || c);
+              return (resp.rows || []).map(row => {
+                const obj = {};
+                cols.forEach((c, i) => obj[c] = row[i]?.value !== undefined ? row[i].value : row[i]);
+                return obj;
+              });
+            }
           };
         },
         close() {}
@@ -30,7 +85,6 @@ module.exports = async function createDB() {
     }
   }
 
-  /* sql.js fallback */
   const DB_PATH = process.env.VERCEL ? '/tmp/diamerna.db' : path.join(__dirname, 'diamerna.db');
   const SQL = await initSqlJs({
     locateFile: file => path.join(__dirname, 'node_modules', 'sql.js', 'dist', file)
