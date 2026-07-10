@@ -342,4 +342,91 @@
       }
     })
   })
+
+  /* Decorative floating particles */
+  ;(function() {
+    if (document.querySelector('.particle')) return
+    const colors = ['var(--pink)', 'var(--lav)', 'var(--mint)']
+    const el = document.body
+    for (let i = 0; i < 3; i++) {
+      const p = document.createElement('div')
+      p.className = 'particle'
+      p.style.cssText = `position:fixed;border-radius:50%;pointer-events:none;z-index:-1;opacity:.12;background:radial-gradient(circle,${colors[i]},transparent);animation:float ${18 + i * 4}s infinite ease-in-out;animation-delay:-${i * 6}s`
+      const size = [280, 200, 150][i]
+      p.style.width = size + 'px'
+      p.style.height = size + 'px'
+      const pos = [[-80, -80], [null, null], [null, null]]
+      if (i === 0) { p.style.top = '-80px'; p.style.right = '-80px'; p.style.left = 'auto'; p.style.bottom = 'auto' }
+      else if (i === 1) { p.style.bottom = '-60px'; p.style.left = '-60px' }
+      else { p.style.top = '30%'; p.style.left = '-40px' }
+      document.body.appendChild(p)
+    }
+  })()
+
+  /* Toast helper */
+  window.toast = function(msg, type) {
+    const t = document.createElement('div')
+    t.className = 'toast'
+    t.textContent = msg
+    if (type === 'success') t.style.borderColor = 'var(--mint)'
+    else if (type === 'error') t.style.borderColor = 'var(--warn)'
+    else if (type === 'info') t.style.borderColor = 'var(--pink)'
+    document.body.appendChild(t)
+    setTimeout(() => t.remove(), 3000)
+  }
+
+  /* Animate number on scroll */
+  ;(function() {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target
+          const target = parseFloat(el.dataset.count)
+          if (isNaN(target)) return
+          const dur = parseInt(el.dataset.dur) || 1000
+          const start = performance.now()
+          const step = (now) => {
+            const p = Math.min((now - start) / dur, 1)
+            const eased = 1 - Math.pow(1 - p, 3)
+            el.textContent = Math.round(target * eased)
+            if (p < 1) requestAnimationFrame(step)
+            else el.textContent = target
+          }
+          requestAnimationFrame(step)
+          observer.unobserve(el)
+        }
+      })
+    }, { threshold: .5 })
+    document.querySelectorAll('[data-count]').forEach(el => observer.observe(el))
+  })()
+
+  /* Register service worker for offline + push notifications */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function(err) {
+      console.warn('SW registration failed:', err.message)
+    })
+  }
+
+  /* Notification permission banner */
+  function showNotifBanner() {
+    if (!('Notification' in window) || Notification.permission !== 'default') return
+    const main = document.querySelector('.main-content') || document.getElementById('mainContent') || document.querySelector('.section.active')
+    if (!main) return
+    /* Don't show on admin or chat */
+    if (location.pathname.includes('admin') || location.pathname.includes('chat')) return
+    const banner = document.createElement('div')
+    banner.className = 'notif-banner'
+    banner.innerHTML = '<span class="icon">🔔</span><div class="txt"><strong>Enable Notifications</strong><span>Get reminders for glucose checks, vitamins, and more</span></div><button class="dismiss" id="notifDismiss">✕</button>'
+    main.insertBefore(banner, main.firstChild)
+    banner.addEventListener('click', function(e) {
+      if (e.target.closest('.dismiss')) { banner.remove(); localStorage.setItem('notifBannerDismissed', '1'); return }
+      Notification.requestPermission().then(function(p) {
+        if (p === 'granted') {
+          banner.innerHTML = '<span class="icon">✅</span><div class="txt"><strong>Notifications Enabled!</strong><span>You\'ll get helpful reminders throughout the day</span></div>'
+          setTimeout(function() { banner.remove() }, 3000)
+        }
+      })
+    })
+  }
+  if (!localStorage.getItem('notifBannerDismissed')) showNotifBanner()
 })()

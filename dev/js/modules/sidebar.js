@@ -4,14 +4,32 @@
   const sidebar = document.getElementById('sidebar')
   const overlay = document.getElementById('sidebarOverlay')
   const closeBtn = document.getElementById('sidebarClose')
+  let persist = false
+
+  function updatePersist() {
+    const wide = window.innerWidth >= 1024
+    if (wide && !persist) {
+      persist = true
+      document.body.classList.add('sidebar-persist')
+      sidebar.classList.add('open')
+      overlay.classList.remove('open')
+      document.body.style.overflow = ''
+    } else if (!wide && persist) {
+      persist = false
+      document.body.classList.remove('sidebar-persist')
+      sidebar.classList.remove('open')
+    }
+  }
 
   function openSidebar() {
+    if (persist) return
     sidebar.classList.add('open')
     overlay.classList.add('open')
     document.body.style.overflow = 'hidden'
   }
 
   function closeSidebar() {
+    if (persist) return
     sidebar.classList.remove('open')
     overlay.classList.remove('open')
     document.body.style.overflow = ''
@@ -20,6 +38,8 @@
   menuBtn.addEventListener('click', openSidebar)
   closeBtn.addEventListener('click', closeSidebar)
   overlay.addEventListener('click', closeSidebar)
+  window.addEventListener('resize', updatePersist)
+  updatePersist()
 
   /* Update sidebar user info */
   function updateSidebarUser() {

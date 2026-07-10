@@ -1,0 +1,20 @@
+{
+  "appId": "com.diamerna.app",
+  "appName": "DiaMerna",
+  "webDir": "../dev",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_configurable",
+      "iconColor": "#06b6d4",
+      "sound": "beep.wav"
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}

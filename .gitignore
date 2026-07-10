@@ -24,3 +24,26 @@ dev/uploads/
 
 # Local asset copy (already in dev/logo.jpeg)
 assets/
+
+# Build outputs
+dist-release/
+desktop/dist/
+desktop/encrypted-keys.json
+desktop/node_modules/
+desktop/icon.png
+mobile/android/
+mobile/ios/
+mobile/node_modules/
+mobile/encrypted-config.js
+mobile/dist/
+scripts/*.js  # keep source but don't duplicate
+!scripts/gen-icon.js
+!scripts/build-all.js
+!scripts/create-release.js
+
+# Desktop build artifacts
+*.exe
+*.dmg
+*.AppImage
+*.apk
+*.aab

@@ -6,7 +6,12 @@
   "scripts": {
     "dev": "node serve.js",
     "start": "node api/index.js",
-    "vercel-build": "echo 'Build complete'"
+    "vercel-build": "echo 'Build complete'",
+    "encrypt": "node encrypt-keys.js",
+    "build:desktop": "node scripts/build-all.js --desktop",
+    "build:mobile": "node scripts/build-all.js --mobile",
+    "build:all": "node scripts/build-all.js --desktop --mobile",
+    "release": "node scripts/create-release.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -14,5 +19,8 @@
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.3",
     "sql.js": "^1.11.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.5"
   }
 }

@@ -1,0 +1,23 @@
+{
+  "name": "DiaMerna — Maternal Wellness",
+  "short_name": "DiaMerna",
+  "description": "AI-powered maternal wellness companion — track glucose, baby growth, health, and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#06b6d4",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    { "src": "/logo.jpeg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any" },
+    { "src": "/logo.jpeg", "sizes": "192x192", "type": "image/jpeg", "purpose": "maskable" }
+  ],
+  "categories": ["health", "medical", "lifestyle", "family"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "display_override": ["standalone", "minimal-ui"],
+  "screenshots": [
+    { "src": "/logo.jpeg", "sizes": "1280x720", "type": "image/jpeg", "form_factor": "wide" },
+    { "src": "/logo.jpeg", "sizes": "720x1280", "type": "image/jpeg", "form_factor": "narrow" }
+  ]
+}

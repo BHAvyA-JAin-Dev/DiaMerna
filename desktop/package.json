@@ -1,0 +1,52 @@
+{
+  "name": "diamerna",
+  "version": "1.0.0",
+  "description": "DiaMerna — Maternal Wellness Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:all": "node ../encrypt-keys.js && electron-builder --win --linux --mac",
+    "encrypt": "node ../encrypt-keys.js"
+  },
+  "build": {
+    "appId": "com.diamerna.app",
+    "productName": "DiaMerna",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "encrypted-keys.json",
+      "icon.png"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "icon.png",
+      "artifactName": "DiaMerna-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "DiaMerna"
+    },
+    "extraResources": [
+      {
+        "from": "../dev",
+        "to": "webapp",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  }
+}
