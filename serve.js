@@ -341,17 +341,20 @@ http.createServer((req, res) => {
   const routeKey = req.method + ' ' + req.url.split('?')[0];
   if (routes[routeKey]) return routes[routeKey](req, res);
 
+  const __chatKeys = (process.env.OPENROUTER_API_KEY || '').split(',').map(s => s.trim()).filter(Boolean);
+  let __chatIdx = 0;
   if (req.url === '/api/chat' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
+      const key = __chatKeys.length > 1 ? __chatKeys[(__chatIdx++) % __chatKeys.length] : (__chatKeys[0] || '');
       const opts = {
         hostname: 'openrouter.ai',
         path: '/api/v1/chat/completions',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': req.headers['authorization'] || 'Bearer ',
+          'Authorization': 'Bearer ' + key,
           'Content-Length': Buffer.byteLength(body)
         }
       };

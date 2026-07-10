@@ -443,11 +443,14 @@ if (PERSISTENT_SERVER_URL) {
     res.json({ files });
   });
 
+  const CHAT_KEY_INDEX = { n: 0 };
   app.post('/api/chat', (req, res) => {
     const body = JSON.stringify(req.body);
+    const keys = (process.env.OPENROUTER_API_KEY || '').split(',').map(s => s.trim()).filter(Boolean);
+    const key = keys.length > 1 ? keys[(CHAT_KEY_INDEX.n++) % keys.length] : (keys[0] || '');
     const opts = {
       hostname: 'openrouter.ai', path: '/api/v1/chat/completions', method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': req.headers['authorization'] || 'Bearer ', 'Content-Length': Buffer.byteLength(body) }
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) }
     };
     const proxy = https.request(opts, proxyRes => {
       res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
