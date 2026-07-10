@@ -113,6 +113,18 @@
     <div class="space-y-2">
       <div id="authNameGroup" style="display:none"><input type="text" id="authName" placeholder="Your name" class="input w-full text-sm" autocomplete="off"></div>
       <div id="authPinGroup" style="display:none"><input type="password" id="authPin" placeholder="Set a 4-6 digit PIN (for password reset)" class="input w-full text-sm" inputmode="numeric" maxlength="6"></div>
+      <div id="authProfileGroup" style="display:none">
+        <input type="date" id="authDob" placeholder="Date of Birth" class="input w-full text-sm">
+        <input type="date" id="authLmp" placeholder="LMP (Last Menstrual Period)" class="input w-full text-sm">
+        <label class="flex items-center gap-2 text-sm cursor-pointer py-1"><input type="checkbox" id="authPreg" class="w-4 h-4 accent-cyber-pink" checked> 🤰 I'm Pregnant</label>
+        <div class="flex gap-2 items-center"><label class="text-[11px] text-gray-500">Cycle (days):</label><input type="number" id="authCycle" value="28" min="20" max="45" class="input w-20 text-sm"></div>
+        <select id="authGoal" class="input w-full text-sm" style="font-family:inherit">
+          <option value="gestational-diabetes">🩸 Gestational Diabetes Management</option>
+          <option value="blood-sugar">📊 Blood Sugar Control</option>
+          <option value="general-wellness" selected>🌿 General Pregnancy Wellness</option>
+          <option value="weight-management">⚖️ Healthy Weight Gain</option>
+        </select>
+      </div>
       <div id="authForgotGroup" style="display:none">
         <input type="password" id="authForgotPin" placeholder="Your 4-6 digit PIN" class="input w-full text-sm" inputmode="numeric" maxlength="6">
         <input type="password" id="authForgotNewPass" placeholder="New password" class="input w-full text-sm">

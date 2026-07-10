@@ -266,6 +266,9 @@
     document.getElementById('profEditLmp').value = document.getElementById('profLmp').textContent === '—' ? '' : document.getElementById('profLmp').textContent
     document.getElementById('profEditPreg').checked = document.getElementById('profPreg').textContent === '✅ Yes'
     document.getElementById('profEditCycle').value = document.getElementById('profCycle').textContent === '—' ? 28 : parseInt(document.getElementById('profCycle').textContent)
+    const goalText = document.getElementById('profGoal').textContent
+    const goalVal = goalText === '—' ? 'general-wellness' : goalText.replace(/\s+/g, '-').toLowerCase()
+    ;[...document.getElementById('profEditGoal').options].some(o => { if (o.value === goalVal || o.text.includes(goalText)) { o.selected = true; return true } })
   })
 
   document.getElementById('profCancelBtn')?.addEventListener('click', () => {

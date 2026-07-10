@@ -199,7 +199,7 @@ const rateLimitMap = new Map();
   /* === API Routes (standalone) === */
   app.post('/api/register', async (req, res) => {
     const db = await getDB();
-    const { email, password, name, pin } = req.body;
+    const { email, password, name, pin, dob, lmp, is_pregnant, cycle_length, health_goal } = req.body;
     if (!email || !password || !name || !pin) return res.status(400).json({ error: 'email, password, name, and pin required' });
     if (!/^\d{4,6}$/.test(pin)) return res.status(400).json({ error: 'PIN must be 4-6 digits' });
     const existing = await db.prepare('SELECT id FROM users WHERE email = ?').get(email);
@@ -208,6 +208,11 @@ const rateLimitMap = new Map();
     const pinHash = await bcrypt.hash(pin, 10);
     const id = uuid();
     await db.prepare('INSERT INTO users (id, email, name, password, pin) VALUES (?, ?, ?, ?, ?)').run(id, email, name, hash, pinHash);
+    /* Store profile fields if provided */
+    if (dob || lmp || health_goal) {
+      const pt = db.prepare('INSERT OR REPLACE INTO profiles (user_id, name, dob, lmp, is_pregnant, cycle_length, health_goal, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime("now"))');
+      await pt.run(id, name, dob || '', lmp || '', is_pregnant !== false ? 1 : 0, cycle_length || 28, health_goal || 'general-wellness');
+    }
     const token = jwt.sign({ id, email, name }, JWT_SECRET, { expiresIn: '30d' });
     res.status(201).json({ token, user: { id, email, name } });
   });

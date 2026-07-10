@@ -21,6 +21,7 @@
     document.getElementById('authToggleBtn').textContent = 'No account? Register'
     document.getElementById('authNameGroup').style.display = 'none'
     document.getElementById('authPinGroup').style.display = 'none'
+    document.getElementById('authProfileGroup').style.display = 'none'
     document.getElementById('authConfirmGroup').style.display = 'none'
     document.getElementById('authConfirmPassword').value = ''
     document.getElementById('authForgotGroup').style.display = 'none'
@@ -64,6 +65,7 @@
       document.getElementById('authToggleBtn').textContent = 'Already have an account? Login'
       document.getElementById('authNameGroup').style.display = 'block'
       document.getElementById('authPinGroup').style.display = 'block'
+      document.getElementById('authProfileGroup').style.display = 'block'
       document.getElementById('authConfirmGroup').style.display = 'block'
       document.getElementById('authForgotGroup').style.display = 'none'
       document.getElementById('authForgotLink').style.display = 'none'
@@ -126,7 +128,14 @@
 
     msg.textContent = 'Please wait...'
     const endpoint = isLogin ? '/api/login' : '/api/register'
-    const body = isLogin ? { email, password } : { email, password, name, pin }
+    const body = isLogin ? { email, password } : {
+      email, password, name, pin,
+      dob: document.getElementById('authDob').value,
+      lmp: document.getElementById('authLmp').value,
+      is_pregnant: document.getElementById('authPreg').checked,
+      cycle_length: parseInt(document.getElementById('authCycle').value) || 28,
+      health_goal: document.getElementById('authGoal').value
+    }
 
     try {
       const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -135,9 +144,35 @@
       Store.set('authToken', d.token)
       Store.set('userEmail', d.user.email)
       Store.set('userName', d.user.name)
-      Store.set('profile', { name: d.user.name, dob: '', lmp: '', isPregnant: true })
+      const profData = {
+        name: d.user.name,
+        dob: body.dob || '',
+        lmp: body.lmp || '',
+        isPregnant: !isLogin ? (body.is_pregnant !== false) : true
+      }
+      Store.set('profile', profData)
+      if (body.lmp) { Store.set('lmp', body.lmp); Store.set('cycleLen', body.cycle_length || 28); Store.set('pregnant', body.is_pregnant !== false) }
+      if (body.health_goal) Store.set('goal', body.health_goal)
+      if (body.dob) Store.set('dob', body.dob)
       hide()
       updateUI(d.user, [], [])
+      /* Also fetch profile from server to get stored details */
+      if (isLogin) {
+        fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + d.token } })
+          .then(r => r.json()).then(p => {
+            if (p.profile) {
+              Store.set('profile', {
+                name: p.profile.name || d.user.name,
+                dob: p.profile.dob || '',
+                lmp: p.profile.lmp || '',
+                isPregnant: p.profile.is_pregnant !== 0
+              })
+              if (p.profile.lmp) { Store.set('lmp', p.profile.lmp); Store.set('pregnant', p.profile.is_pregnant !== 0) }
+              if (p.profile.health_goal) Store.set('goal', p.profile.health_goal)
+              if (p.profile.dob) Store.set('dob', p.profile.dob)
+            }
+          }).catch(() => {})
+      }
     } catch { msg.textContent = 'Server unavailable. Is the server running?' }
   })
 
