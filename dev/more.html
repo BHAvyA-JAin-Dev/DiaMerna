@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0a0a1a">
-<title>DiaMerna — Maternal Wellness</title>
+<title>More — DiaMerna</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{cyber:{bg:'#0a0a1a',surface:'#12122a',card:'#1a1a3e',border:'#2a2a5e',pink:'#ff6b9d',lavender:'#b388ff',mint:'#69f0ae',warn:'#ff5252'}}}}}</script>
 <link rel="stylesheet" href="css/style.css">
@@ -131,29 +131,87 @@
 <!-- ===== MAIN ===== -->
 <main id="app" class="app-content">
 
-  <!-- ===== TAB: HOME ===== -->
-  <section class="section active" data-tab="home">
-    <div class="card glass" id="dashGreeting">
-      <div class="flex justify-between items-start">
-        <div><div class="text-xs text-gray-500">Welcome back</div><div id="dashName" class="text-xl font-bold">🌸 Priya</div><div id="dashPregWeek" class="text-sm c-mint">Week 28 · Pregnancy</div></div>
-        <div id="dashScore" class="text-center"><div class="text-2xl font-black c-pink">89</div><div class="text-[9px] text-gray-500">WEEKLY</div></div>
+  <!-- ===== TAB: MORE ===== -->
+  <section class="section active" data-tab="more">
+    <div class="card glass" id="calorieAnalyzer">
+      <div class="card-header"><span class="text-xl">🔥</span><h2>AI Calorie Analyzer</h2></div>
+      <p class="text-xs text-gray-500 mb-3">Type any food to get calories, protein, carbs, fat, and fiber via AI.</p>
+      <div class="flex gap-2 mb-2">
+        <input type="text" id="calInp" placeholder="e.g. 1 cup basmati rice, 100g paneer" class="input flex-1 text-sm" autocomplete="off">
+        <input type="number" id="calQty" placeholder="g" class="input w-16 text-sm" min="1" max="5000" inputmode="numeric" autocomplete="off">
+        <button id="calAnalyzeBtn" class="btn-primary text-sm">🔍</button>
       </div>
+      <div id="calResult" class="text-xs text-gray-500"></div>
+      <div id="calHistory" class="mt-3 space-y-1"></div>
     </div>
-    <div class="card glass" id="dashStats"><div class="grid grid-cols-3 gap-2" id="dashStatsGrid"></div></div>
+
     <div class="card glass">
-      <h3 class="text-sm font-bold mb-3">🎯 Today's Goals</h3>
-      <div class="space-y-2" id="dashGoals">
-        <label class="chk-item"><input type="checkbox" value="walk20"><span>🚶‍♀️ Walk 20 min</span></label>
-        <label class="chk-item"><input type="checkbox" value="water8"><span>💧 2.5L Water</span></label>
-        <label class="chk-item"><input type="checkbox" value="medicine"><span>💊 Medicine</span></label>
-        <label class="chk-item"><input type="checkbox" value="sugarCheck"><span>🩸 Sugar Check 3x</span></label>
-        <label class="chk-item"><input type="checkbox" value="healthyMeal"><span>🥗 Healthy Meal</span></label>
+      <div class="card-header"><span class="text-xl">🤕</span><h3>Symptom Checker (AI)</h3></div>
+      <label class="input-label text-[11px]">Select symptoms you're experiencing</label>
+      <div class="flex flex-wrap gap-1.5 mb-3" id="sympBtns"></div>
+      <label class="input-label text-[11px]">🌡️ Body Temperature (°C)</label>
+      <input type="number" id="sympTemp" class="input w-24 text-sm" placeholder="37.0" step="0.1" min="35" max="43">
+      <label class="input-label text-[11px] mt-2">Other symptoms not listed above</label>
+      <textarea id="sympCustom" class="input w-full text-sm" rows="2" placeholder="e.g. back pain, frequent urination..." style="resize:vertical;min-height:45px;font-family:inherit"></textarea>
+      <div class="flex items-center gap-2 mt-2"><label class="text-[10px] text-gray-500 flex items-center gap-1 cursor-pointer"><input type="checkbox" id="sympIncludeGlucose" checked> Include glucose</label><label class="text-[10px] text-gray-500 flex items-center gap-1 cursor-pointer"><input type="checkbox" id="sympIncludeMeds" checked> Include meds</label></div>
+      <button id="sympAnalyzeBtn" class="btn-primary w-full text-sm mt-2">🤖 Analyze Symptoms with AI</button>
+      <div id="sympResult" class="mt-3 text-xs leading-relaxed" style="display:none"></div>
+    </div>
+
+    <div class="card glass" id="cloudSettingsCard">
+      <div class="card-header"><span class="text-xl">☁️</span><h3>Cloud Storage</h3></div>
+      <div id="sidebarCloudStatus" class="text-[10px] text-gray-500 mb-2"></div>
+      <div id="cloudOauthStatus" class="text-[10px] text-gray-500 mb-2"></div>
+
+      <div id="cloudProvidersConfig" class="space-y-3"></div>
+
+      <div class="flex items-center gap-2 my-3"><hr style="flex:1;border-color:var(--border)"><span class="text-[10px] text-gray-600">OR manual token entry</span><hr style="flex:1;border-color:var(--border)"></div>
+
+      <label class="input-label text-[11px]">Provider</label>
+      <select id="cloudProvider" class="input w-full text-sm" style="font-family:inherit">
+        <option value="dropbox">Dropbox</option>
+      </select>
+      <label class="input-label text-[11px] mt-2">Access Token (manual)</label>
+      <input type="text" id="cloudAccessToken" class="input w-full text-sm" placeholder="Paste your OAuth access token">
+      <label class="input-label text-[11px] mt-2">Refresh Token (optional)</label>
+      <input type="text" id="cloudRefreshToken" class="input w-full text-sm" placeholder="Paste refresh token if available">
+      <div id="cloudMsg" class="text-xs text-gray-500 mt-2"></div>
+      <button id="cloudConnectBtn" class="btn-primary w-full text-sm mt-2">🔗 Connect (Manual)</button>
+
+      <div class="mt-3 flex gap-2">
+        <button id="cloudListBtn" class="btn-primary text-[10px]" style="flex:1;padding:6px">📂 List My Cloud Files</button>
+        <button id="cloudRefreshBtn" class="btn-outline text-[10px]" style="flex:1;padding:6px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer">🔄 Refresh Status</button>
       </div>
-      <div id="dashProgress" class="mt-3"><div class="flex justify-between text-xs text-gray-500 mb-1"><span>Progress</span><span id="dashPct">0%</span></div><div class="progress-bar"><div id="dashBar" class="progress-fill" style="width:0%;background:linear-gradient(90deg,#ff6b9d,#b388ff)"></div></div></div>
+      <div id="cloudFileList" class="mt-2 space-y-1" style="max-height:200px;overflow-y:auto"></div>
+
+      <details class="mt-2 text-[10px] text-gray-500" style="cursor:pointer"><summary>📖 Dropbox Setup Guide</summary>
+        <div class="mt-2 leading-relaxed p-2 rounded-lg" style="background:rgba(255,255,255,0.03)">
+          <strong class="c-lav">📦 Dropbox One-Tap OAuth</strong><br>
+          The app owner has already configured Dropbox. To connect your account:<br><br>
+          1. Make sure you're logged in to your Dropbox account in the browser<br>
+          2. Click <strong>"🔗 Connect to Dropbox"</strong> above<br>
+          3. Authorize the DiaMerna app (App folder access only)<br>
+          4. You'll be redirected back automatically<br><br>
+          <span class="text-gray-600">The Dropbox app uses <strong>App folder</strong> permission type — files are stored in a dedicated <code>DiaMerna/YourName/</code> folder, not your entire Dropbox. Only the app can access this folder.</span>
+        </div>
+      </details>
     </div>
+
+    <div class="card glass" id="docSummaryCard">
+      <div class="card-header"><span class="text-xl">👩‍⚕️</span><h3>Doctor Visit Summary</h3></div>
+      <button id="docSummaryBtn" class="btn-primary w-full text-sm mb-2">📄 Generate Report</button>
+      <div id="docSummary" class="text-xs text-gray-500"></div>
+    </div>
+
     <div class="card glass">
-      <h3 class="text-sm font-bold mb-2">📈 Weekly Score</h3>
-      <div id="dashAIInsight" class="text-xs text-gray-400">Track your glucose, hydration, walks, and medicine to see your weekly score improve.</div>
+      <div class="card-header"><span class="text-xl">📁</span><h3>Upload Reports</h3></div>
+      <label class="input-label text-[11px]">Upload lab reports, test PDFs, or doctor notes (text files)</label>
+      <input type="file" id="reportFileInput" accept=".txt,.csv" class="input w-full text-sm" style="padding:8px">
+      <label class="input-label text-[11px] mt-2">Or paste report text</label>
+      <textarea id="reportPasteInput" class="input w-full text-sm" rows="3" placeholder="Paste your lab report text here..." style="resize:vertical;min-height:50px;font-family:inherit"></textarea>
+      <button id="uploadReportBtn" class="btn-primary w-full text-sm mt-2">📤 Upload & Analyze with AI</button>
+      <div id="uploadedReports" class="mt-2 space-y-1"></div>
+      <div id="reportAnalysis" class="mt-2 text-xs leading-relaxed" style="display:none"></div>
     </div>
   </section>
 
@@ -171,7 +229,8 @@
 <script src="js/utils/constants.js"></script>
 <script src="js/utils/storage.js"></script>
 <script src="js/utils/helpers.js"></script>
-<script src="js/modules/dashboard.js"></script>
+<script src="js/modules/more-menu.js"></script>
+<script src="js/modules/calorie-analyzer.js"></script>
 <script src="js/modules/theme-switcher.js"></script>
 <script src="js/modules/page-nav.js"></script>
 <script src="js/modules/sidebar.js"></script>

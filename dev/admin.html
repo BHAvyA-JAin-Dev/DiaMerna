@@ -6,31 +6,49 @@
 <title>DiaMerna Admin</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-  .card{background:#14141f;border:1px solid #2a2a3a;border-radius:16px;padding:32px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
-  .card-wide{max-width:600px}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh;padding:20px}
+  .card{background:#14141f;border:1px solid #2a2a3a;border-radius:16px;padding:32px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.5);margin:40px auto}
+  .card-wide{max-width:900px;margin:20px auto}
   h1{background:linear-gradient(135deg,#ff6b9d,#b388ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:24px;margin-bottom:4px}
   .sub{color:#888;font-size:13px;margin-bottom:24px}
   label{display:block;font-size:12px;color:#999;margin-bottom:4px;margin-top:12px}
-  input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2a2a3a;background:#1a1a28;color:#e0e0e0;font-size:14px;outline:none;transition:border-color .2s}
-  input:focus{border-color:#b388ff}
-  button{width:100%;padding:12px;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s;margin-top:16px}
+  input,select,textarea{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2a2a3a;background:#1a1a28;color:#e0e0e0;font-size:14px;outline:none;transition:border-color .2s;font-family:inherit}
+  input:focus,select:focus,textarea:focus{border-color:#b388ff}
+  textarea{resize:vertical;min-height:60px}
+  button{padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;margin-top:12px}
   .btn-primary{background:linear-gradient(135deg,#ff6b9d,#b388ff);color:#fff}
   .btn-primary:hover{opacity:.9}
+  .btn-sm{font-size:12px;padding:6px 14px;margin-top:4px;width:auto}
+  .btn-danger{background:#ff6b6b;color:#fff}
+  .btn-outline{background:transparent;border:1px solid #2a2a3a;color:#e0e0e0}
+  .btn-outline:hover{border-color:#b388ff}
   .error{color:#ff6b6b;font-size:13px;margin-top:8px;display:none}
+  .success{color:#69f0ae;font-size:13px;margin-top:8px;display:none}
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
   .stat-card{background:#1a1a28;border:1px solid #2a2a3a;border-radius:12px;padding:20px;text-align:center}
   .stat-val{font-size:36px;font-weight:800;background:linear-gradient(135deg,#69f0ae,#4fc3f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
   .stat-lbl{font-size:12px;color:#888;margin-top:4px}
-  .logout-btn{background:transparent;border:1px solid #ff6b6b;color:#ff6b6b;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;margin-top:16px;width:auto}
+  .logout-btn{background:transparent;border:1px solid #ff6b6b;color:#ff6b6b;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;width:auto}
   .logout-btn:hover{background:#ff6b6b22}
-  .flex{display:flex;align-items:center;justify-content:space-between}
+  .flex{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .section{margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #2a2a3a}
+  .section:last-child{border-bottom:0}
+  .section-title{font-size:16px;font-weight:700;margin-bottom:12px;color:#b388ff}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .hidden{display:none}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #2a2a3a}
+  th{color:#888;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  td{color:#ccc}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  .result-box{background:#0a0a14;border:1px solid #2a2a3a;border-radius:8px;padding:12px;font-size:12px;font-family:monospace;white-space:pre-wrap;margin-top:8px;max-height:300px;overflow:auto;color:#69f0ae}
+  .flex-center{display:flex;align-items:center;justify-content:center;min-height:100vh}
+  @media(max-width:600px){.grid-2{grid-template-columns:1fr}.card-wide{padding:16px}.stats{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
 
-<div id="loginCard" class="card">
+<div id="loginCard" class="card" style="margin:40px auto">
   <h1>🔐 Admin Login</h1>
   <div class="sub">DiaMerna — Owner Panel</div>
   <label>Email</label>
@@ -50,18 +68,42 @@
     </div>
     <button id="adminLogoutBtn" class="logout-btn">Logout</button>
   </div>
-  <div id="statsContainer" class="stats">
-    <div class="stat-card">
-      <div class="stat-val" id="statUsers">—</div>
-      <div class="stat-lbl">👥 Total Users</div>
+
+  <!-- Stats -->
+  <div class="section">
+    <div class="stats">
+      <div class="stat-card"><div class="stat-val" id="statUsers">—</div><div class="stat-lbl">👥 Total Users</div></div>
+      <div class="stat-card"><div class="stat-val" id="statDropbox">—</div><div class="stat-lbl">☁️ Dropbox Connected</div></div>
     </div>
-    <div class="stat-card">
-      <div class="stat-val" id="statDropbox">—</div>
-      <div class="stat-lbl">☁️ Dropbox Connected</div>
-    </div>
+    <button id="adminRefreshBtn" class="btn-sm btn-outline" style="margin:0">🔄 Refresh</button>
   </div>
-  <div id="adminRefresh" style="text-align:center;margin-top:8px">
-    <button id="adminRefreshBtn" style="background:none;border:none;color:#888;font-size:12px;cursor:pointer">🔄 Refresh</button>
+
+  <!-- Users -->
+  <div class="section">
+    <div class="section-title">👥 Users</div>
+    <div id="usersContainer"><p class="text-gray-500" style="color:#888;font-size:13px">Loading...</p></div>
+  </div>
+
+  <!-- App Settings -->
+  <div class="section">
+    <div class="section-title">⚙️ App Settings</div>
+    <p style="color:#888;font-size:12px;margin-bottom:12px">These override config.js at runtime. Leave blank to use defaults.</p>
+    <div class="grid-2">
+      <div><label>AI Model</label><input id="admModel" placeholder="nvidia/nemotron-3-super-120b-a12b:free"></div>
+      <div><label>API Key</label><input id="admApiKey" placeholder="sk-or-... (stored server-side)" type="password"></div>
+    </div>
+    <div><label>System Prompt</label><textarea id="admPrompt" rows="3" placeholder="AI system prompt..."></textarea></div>
+    <button id="admSaveSettings" class="btn-primary btn-sm">💾 Save Settings</button>
+    <div id="admSettingsMsg" class="success"></div>
+  </div>
+
+  <!-- SQL Query -->
+  <div class="section">
+    <div class="section-title">🗄️ Database Query</div>
+    <p style="color:#888;font-size:12px;margin-bottom:8px">Execute SELECT queries. Read-only protection active.</p>
+    <textarea id="admSql" rows="2" placeholder="SELECT * FROM users LIMIT 10">SELECT * FROM users LIMIT 10</textarea>
+    <div class="flex" style="gap:8px"><button id="admRunSql" class="btn-primary btn-sm">▶ Run</button><button id="admClearSql" class="btn-sm btn-outline">Clear</button></div>
+    <div id="admSqlResult" class="result-box hidden"></div>
   </div>
 </div>
 
@@ -76,6 +118,16 @@ const logoutBtn = document.getElementById('adminLogoutBtn')
 const refreshBtn = document.getElementById('adminRefreshBtn')
 const statUsers = document.getElementById('statUsers')
 const statDropbox = document.getElementById('statDropbox')
+const usersContainer = document.getElementById('usersContainer')
+const admModel = document.getElementById('admModel')
+const admApiKey = document.getElementById('admApiKey')
+const admPrompt = document.getElementById('admPrompt')
+const admSaveSettings = document.getElementById('admSaveSettings')
+const admSettingsMsg = document.getElementById('admSettingsMsg')
+const admSql = document.getElementById('admSql')
+const admRunSql = document.getElementById('admRunSql')
+const admClearSql = document.getElementById('admClearSql')
+const admSqlResult = document.getElementById('admSqlResult')
 
 let adminToken = localStorage.getItem('adminToken') || ''
 
@@ -87,19 +139,57 @@ function showLogin(msg) {
 
 function showDash() { loginCard.classList.add('hidden'); dashCard.classList.remove('hidden'); adminError.style.display = 'none' }
 
+async function api(path, opts) {
+  opts = opts || {}
+  opts.headers = opts.headers || {}
+  opts.headers['Authorization'] = 'Bearer ' + adminToken
+  if (opts.body && typeof opts.body === 'object') {
+    opts.headers['Content-Type'] = 'application/json'
+    opts.body = JSON.stringify(opts.body)
+  }
+  const r = await fetch(path, opts)
+  if (r.status === 401) { localStorage.removeItem('adminToken'); adminToken = ''; showLogin('Session expired'); return null }
+  return r.json()
+}
+
 async function loadStats() {
   if (!adminToken) return
   statUsers.textContent = '⋯'; statDropbox.textContent = '⋯'
   try {
-    const r = await fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + adminToken } })
-    if (r.status === 401) { localStorage.removeItem('adminToken'); adminToken = ''; showLogin('Session expired'); return }
-    const d = await r.json()
-    statUsers.textContent = d.totalUsers
-    statDropbox.textContent = d.dropboxConnections
+    const d = await api('/api/admin/stats')
+    if (d) { statUsers.textContent = d.totalUsers; statDropbox.textContent = d.dropboxConnections }
   } catch { statUsers.textContent = '?'; statDropbox.textContent = '?' }
 }
 
-if (adminToken) { showDash(); loadStats() }
+async function loadUsers() {
+  if (!adminToken) return
+  usersContainer.innerHTML = '<p style="color:#888;font-size:13px">Loading...</p>'
+  try {
+    const d = await api('/api/admin/users')
+    if (!d || !d.users) { usersContainer.innerHTML = '<p style="color:#ff6b6b;font-size:13px">Failed to load users</p>'; return }
+    if (!d.users.length) { usersContainer.innerHTML = '<p style="color:#888;font-size:13px">No users yet.</p>'; return }
+    let html = '<table><thead><tr><th>ID</th><th>Email</th><th>Name</th><th>Created</th></tr></thead><tbody>'
+    d.users.forEach(u => {
+      html += '<tr><td style="font-family:monospace;font-size:11px">' + u.id.slice(0,8) + '…</td><td>' + u.email + '</td><td>' + u.name + '</td><td>' + (u.created_at || '—') + '</td></tr>'
+    })
+    html += '</tbody></table>'
+    usersContainer.innerHTML = html
+  } catch { usersContainer.innerHTML = '<p style="color:#ff6b6b;font-size:13px">Failed to load users</p>' }
+}
+
+async function loadSettings() {
+  if (!adminToken) return
+  try {
+    const d = await api('/api/admin/settings')
+    if (d && d.settings) {
+      if (d.settings.model) admModel.value = d.settings.model
+      if (d.settings.api_key) admApiKey.value = d.settings.api_key
+      if (d.settings.prompt) admPrompt.value = d.settings.prompt
+    }
+  } catch {}
+}
+
+if (adminToken) { showDash(); loadStats(); loadUsers(); loadSettings() }
 
 loginBtn.addEventListener('click', async () => {
   const email = adminEmail.value.trim(); const password = adminPass.value
@@ -111,15 +201,60 @@ loginBtn.addEventListener('click', async () => {
     const d = await r.json()
     if (d.error) { adminError.textContent = d.error; adminError.style.display = 'block'; loginBtn.textContent = 'Sign In'; loginBtn.disabled = false; return }
     adminToken = d.token; localStorage.setItem('adminToken', adminToken)
-    showDash(); loadStats()
+    showDash(); loadStats(); loadUsers(); loadSettings()
     loginBtn.textContent = 'Sign In'; loginBtn.disabled = false
   } catch { adminError.textContent = 'Server unavailable'; adminError.style.display = 'block'; loginBtn.textContent = 'Sign In'; loginBtn.disabled = false }
 })
 
 logoutBtn.addEventListener('click', () => { localStorage.removeItem('adminToken'); adminToken = ''; showLogin() })
-refreshBtn.addEventListener('click', loadStats)
+refreshBtn.addEventListener('click', () => { loadStats(); loadUsers() })
 
-adminPass.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click() })
+admSaveSettings.addEventListener('click', async () => {
+  admSettingsMsg.style.display = 'none'
+  const settings = {}
+  if (admModel.value.trim()) settings.model = admModel.value.trim()
+  if (admApiKey.value.trim()) settings.api_key = admApiKey.value.trim()
+  if (admPrompt.value.trim()) settings.prompt = admPrompt.value.trim()
+  try {
+    const d = await api('/api/admin/settings', { method: 'POST', body: { settings } })
+    if (d && d.success) {
+      admSettingsMsg.textContent = '✅ Settings saved! (' + d.applied.length + ' keys)'
+      admSettingsMsg.style.display = 'block'
+      admSettingsMsg.style.color = '#69f0ae'
+    } else {
+      admSettingsMsg.textContent = '❌ ' + (d?.error || 'Save failed')
+      admSettingsMsg.style.display = 'block'
+      admSettingsMsg.style.color = '#ff6b6b'
+    }
+  } catch {
+    admSettingsMsg.textContent = '❌ Server error'
+    admSettingsMsg.style.display = 'block'
+    admSettingsMsg.style.color = '#ff6b6b'
+  }
+})
+
+admRunSql.addEventListener('click', async () => {
+  const sql = admSql.value.trim()
+  if (!sql) return
+  admSqlResult.classList.remove('hidden')
+  admSqlResult.textContent = 'Running...'
+  try {
+    const d = await api('/api/admin/query', { method: 'POST', body: { sql } })
+    if (!d) { admSqlResult.textContent = 'Session expired'; return }
+    if (d.error) { admSqlResult.textContent = '❌ ' + d.error; return }
+    admSqlResult.textContent = JSON.stringify(d.result, null, 2)
+  } catch {
+    admSqlResult.textContent = '❌ Request failed'
+  }
+})
+
+admClearSql.addEventListener('click', () => {
+  admSql.value = ''
+  admSqlResult.classList.add('hidden')
+  admSqlResult.textContent = ''
+})
+
+admPass.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click() })
 adminEmail.addEventListener('keydown', e => { if (e.key === 'Enter') adminPass.focus() })
 </script>
 </body>

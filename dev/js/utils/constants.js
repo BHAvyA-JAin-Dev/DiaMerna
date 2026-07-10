@@ -98,6 +98,31 @@ C.MODEL = C.MODEL || C.AI.MODEL;
 C.PROMPT = C.PROMPT || C.AI.PROMPT;
 C.TABS = ['home','glucose','baby','health','more'];
 
+/* Build BABY_GROWTH array from C.BABY object for babyGrowth() */
+var BABY_GROWTH = [];
+(function () {
+  var EMOJIS = {
+    'Poppy Seed':'🌱','Sesame Seed':'🌱','Sweet Pea':'🫛','Blueberry':'🫐','Raspberry':'🍓',
+    'Cherry':'🍒','Strawberry':'🍓','Fig':'🫐','Plum':'🍑','Pea Pod':'🫛','Lemon':'🍋',
+    'Apple':'🍎','Avocado':'🥑','Onion':'🧅','Bell Pepper':'🫑','Mango':'🥭','Banana':'🍌',
+    'Carrot':'🥕','Papaya':'🍈','Grapefruit':'🍊','Corn':'🌽','Rutabaga':'🥔','Zucchini':'🥒',
+    'Cauliflower':'🥦','Eggplant':'🍆','Butternut Squash':'🎃','Cabbage':'🥬','Coconut':'🥥',
+    'Pineapple':'🍍','Honeydew':'🍈','Cantaloupe':'🍈','Watermelon':'🍉','Romaine Lettuce':'🥬',
+    'Swiss Chard':'🥬','Rhubarb':'🥬','Mini Watermelon':'🍉','Small Pumpkin':'🎃'
+  };
+  for (var w = 4; w <= 42; w++) {
+    if (C.BABY[w]) {
+      BABY_GROWTH.push({
+        w: w,
+        fruit: C.BABY[w].fruit,
+        emoji: EMOJIS[C.BABY[w].fruit] || '🌸',
+        g: C.BABY[w].g,
+        cm: C.BABY[w].cm
+      });
+    }
+  }
+})();
+
 /* --- Global aliases (modules reference these directly) --- */
 var GLUCOSE_LABELS = {};
 Object.keys(C.GLUCOSE.THRESHOLDS).forEach(function(k) { GLUCOSE_LABELS[k] = C.GLUCOSE.THRESHOLDS[k].label; });

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0a0a1a">
-<title>DiaMerna — Maternal Wellness</title>
+<title>Baby — DiaMerna</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{cyber:{bg:'#0a0a1a',surface:'#12122a',card:'#1a1a3e',border:'#2a2a5e',pink:'#ff6b9d',lavender:'#b388ff',mint:'#69f0ae',warn:'#ff5252'}}}}}</script>
 <link rel="stylesheet" href="css/style.css">
@@ -131,29 +131,54 @@
 <!-- ===== MAIN ===== -->
 <main id="app" class="app-content">
 
-  <!-- ===== TAB: HOME ===== -->
-  <section class="section active" data-tab="home">
-    <div class="card glass" id="dashGreeting">
-      <div class="flex justify-between items-start">
-        <div><div class="text-xs text-gray-500">Welcome back</div><div id="dashName" class="text-xl font-bold">🌸 Priya</div><div id="dashPregWeek" class="text-sm c-mint">Week 28 · Pregnancy</div></div>
-        <div id="dashScore" class="text-center"><div class="text-2xl font-black c-pink">89</div><div class="text-[9px] text-gray-500">WEEKLY</div></div>
-      </div>
-    </div>
-    <div class="card glass" id="dashStats"><div class="grid grid-cols-3 gap-2" id="dashStatsGrid"></div></div>
+  <!-- ===== TAB: BABY ===== -->
+  <section class="section active" data-tab="baby">
     <div class="card glass">
-      <h3 class="text-sm font-bold mb-3">🎯 Today's Goals</h3>
-      <div class="space-y-2" id="dashGoals">
-        <label class="chk-item"><input type="checkbox" value="walk20"><span>🚶‍♀️ Walk 20 min</span></label>
-        <label class="chk-item"><input type="checkbox" value="water8"><span>💧 2.5L Water</span></label>
-        <label class="chk-item"><input type="checkbox" value="medicine"><span>💊 Medicine</span></label>
-        <label class="chk-item"><input type="checkbox" value="sugarCheck"><span>🩸 Sugar Check 3x</span></label>
-        <label class="chk-item"><input type="checkbox" value="healthyMeal"><span>🥗 Healthy Meal</span></label>
+      <div class="card-header"><span class="text-xl">👶</span><h2>Baby Growth Timeline</h2></div>
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs text-gray-500">Week</span>
+        <div class="flex gap-1"><button id="babyWeekPrev" class="icon-btn text-sm">-</button><span id="babyWeekDisplay" class="text-lg font-bold c-mint w-16 text-center">26</span><button id="babyWeekNext" class="icon-btn text-sm">+</button></div>
       </div>
-      <div id="dashProgress" class="mt-3"><div class="flex justify-between text-xs text-gray-500 mb-1"><span>Progress</span><span id="dashPct">0%</span></div><div class="progress-bar"><div id="dashBar" class="progress-fill" style="width:0%;background:linear-gradient(90deg,#ff6b9d,#b388ff)"></div></div></div>
+      <div id="babyGrowthCard" class="text-center py-4">
+        <div id="babyFruit" class="text-5xl mb-2">🥭</div>
+        <div id="babyFruitName" class="text-lg font-semibold">Zucchini</div>
+        <div class="grid grid-cols-2 gap-2 mt-3">
+          <div class="p-2 rounded-xl" style="background:rgba(255,255,255,0.04)"><div class="text-xs text-gray-500">Weight</div><div id="babyWeight" class="font-bold c-pink">760 g</div></div>
+          <div class="p-2 rounded-xl" style="background:rgba(255,255,255,0.04)"><div class="text-xs text-gray-500">Length</div><div id="babyLength" class="font-bold c-lav">35.6 cm</div></div>
+        </div>
+      </div>
+      <div class="progress-bar"><div id="babyProgress" class="progress-fill" style="width:65%;background:linear-gradient(90deg,#ff6b9d,#b388ff,#69f0ae)"></div></div>
+      <div class="flex justify-between text-[10px] text-gray-500 mt-1"><span>Week 4</span><span>Week 40</span></div>
     </div>
+
     <div class="card glass">
-      <h3 class="text-sm font-bold mb-2">📈 Weekly Score</h3>
-      <div id="dashAIInsight" class="text-xs text-gray-400">Track your glucose, hydration, walks, and medicine to see your weekly score improve.</div>
+      <div class="card-header"><span class="text-xl">🦶</span><h3>Kick Counter</h3></div>
+      <p class="text-xs text-gray-500 mb-3">Count 10 kicks within 2 hours (after a meal is best).</p>
+      <div class="flex items-center gap-3 mb-2">
+        <button id="kickBtn" class="btn-primary text-lg">👶 Record Kick</button>
+        <span id="kickCount" class="text-2xl font-bold c-pink">0</span>
+        <span class="text-xs text-gray-500">/10</span>
+        <button id="kickReset" class="text-xs text-gray-500 hover:text-white ml-auto">Reset</button>
+      </div>
+      <div class="progress-bar"><div id="kickBar" class="progress-fill" style="width:0%;background:#ff6b9d"></div></div>
+      <div id="kickTime" class="text-[10px] text-gray-500 mt-1">Started: --</div>
+    </div>
+
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">🗓️</span><h3>Cycle & Pregnancy</h3></div>
+      <div class="space-y-2">
+        <div><label class="input-label">LMP</label><input type="date" id="lmpInput" class="input w-full"></div>
+        <div class="flex gap-2"><label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" id="pregMode" class="w-4 h-4 accent-cyber-pink"><span>🤰 Pregnant</span></label><div><label class="input-label">Cycle</label><input type="number" id="cycleLen" value="28" min="20" max="45" class="input w-20"></div></div>
+        <button id="cycleBtn" class="btn-primary w-full">Calculate</button>
+      </div>
+      <div id="cycleOut" class="mt-3 space-y-2"></div>
+    </div>
+
+    <div class="card glass">
+      <div class="card-header"><span class="text-xl">📅</span><h3>Appointments</h3></div>
+      <div class="space-y-2 mb-3" id="aptList"></div>
+      <div class="flex flex-col gap-2"><input type="text" id="aptInput" placeholder="What? (e.g. Ultrasound)" class="input w-full text-sm">
+        <div class="flex gap-2"><input type="date" id="aptDate" class="input flex-1 text-sm"><input type="time" id="aptTime" class="input w-24 text-sm"><button id="aptAddBtn" class="btn-primary text-sm">Add</button></div></div>
     </div>
   </section>
 
@@ -171,7 +196,7 @@
 <script src="js/utils/constants.js"></script>
 <script src="js/utils/storage.js"></script>
 <script src="js/utils/helpers.js"></script>
-<script src="js/modules/dashboard.js"></script>
+<script src="js/modules/baby-tracker.js"></script>
 <script src="js/modules/theme-switcher.js"></script>
 <script src="js/modules/page-nav.js"></script>
 <script src="js/modules/sidebar.js"></script>

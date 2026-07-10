@@ -21,21 +21,32 @@
     document.getElementById('authToggleBtn').textContent = 'No account? Register'
     document.getElementById('authNameGroup').style.display = 'none'
     document.getElementById('authPinGroup').style.display = 'none'
+    document.getElementById('authConfirmGroup').style.display = 'none'
+    document.getElementById('authConfirmPassword').value = ''
     document.getElementById('authForgotGroup').style.display = 'none'
     document.getElementById('authForgotLink').style.display = 'block'
     document.getElementById('authMsg').textContent = ''
   }
 
-  if (token) {
+  function ensureOnboarded() {
+    if (!Store.get('onboarded', false)) {
+      Store.set('onboarded', true)
+      const ob = document.getElementById('onboardingOverlay')
+      if (ob) { ob.classList.add('done'); ob.style.display = 'none' }
+    }
+  }
+
+  const __params = new URLSearchParams(window.location.search)
+  if (token && !__params.get('oauth_success') && !__params.get('oauth_error')) {
     fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } })
       .then(r => r.json()).then(d => {
-        if (d.user) { hide(); updateUI(d.user, d.clouds || [], d.envProviders || []) }
+        if (d.user) { hide(); ensureOnboarded(); updateUI(d.user, d.clouds || [], d.envProviders || []) }
         else { Store.remove('authToken'); show() }
-      }).catch(() => { /* Server may be cold-booting; retry after delay */
+      }).catch(() => {
         setTimeout(() => {
           fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } })
             .then(r => r.json()).then(d => {
-              if (d.user) { hide(); updateUI(d.user, d.clouds || [], d.envProviders || []) }
+              if (d.user) { hide(); ensureOnboarded(); updateUI(d.user, d.clouds || [], d.envProviders || []) }
               else { Store.remove('authToken'); show() }
             }).catch(() => { Store.remove('authToken'); show() })
         }, 2000)
@@ -50,6 +61,7 @@
       document.getElementById('authToggleBtn').textContent = 'Already have an account? Login'
       document.getElementById('authNameGroup').style.display = 'block'
       document.getElementById('authPinGroup').style.display = 'block'
+      document.getElementById('authConfirmGroup').style.display = 'block'
       document.getElementById('authForgotGroup').style.display = 'none'
       document.getElementById('authForgotLink').style.display = 'none'
     } else { resetForm() }
@@ -104,6 +116,10 @@
     if (!isLogin && !name) { msg.textContent = 'Name required'; return }
     if (!isLogin && !pin) { msg.textContent = 'PIN required'; return }
     if (!isLogin && !/^\d{4,6}$/.test(pin)) { msg.textContent = 'PIN must be 4-6 digits'; return }
+    if (!isLogin) {
+      const confirm = document.getElementById('authConfirmPassword').value
+      if (password !== confirm) { msg.textContent = 'Passwords do not match'; return }
+    }
 
     msg.textContent = 'Please wait...'
     const endpoint = isLogin ? '/api/login' : '/api/register'
@@ -190,7 +206,7 @@
         if (!anyConfigured) {
           hint.innerHTML = '⚠️ <strong>No OAuth providers configured.</strong> The app owner must set environment variables. <a href="#guides" class="c-lav">See setup guides below</a>.'
         } else {
-          hint.innerHTML = '✅ Dropbox OAuth is ready. <strong>One important step:</strong> Go to <a href="https://www.dropbox.com/developers/apps" target="_blank" class="c-mint">Dropbox Developer Console</a> → your DiaMerna app → <strong>OAuth 2</strong> → Add redirect URI: <code class="c-mint">http://localhost:5500/api/oauth/callback</code>. Then click <strong>"Connect to Dropbox"</strong> below.'
+          hint.innerHTML = '✅ Dropbox OAuth is ready. <strong>One important step:</strong> Go to <a href="https://www.dropbox.com/developers/apps" target="_blank" class="c-mint">Dropbox Developer Console</a> → your DiaMerna app → <strong>OAuth 2</strong> → Add redirect URI: <code class="c-mint">' + window.location.origin + '/api/oauth/callback</code>. Then click <strong>"Connect to Dropbox"</strong> below.'
         }
       }
       /* Wire connect buttons */
@@ -201,14 +217,14 @@
           if (!tk) { msg.textContent = 'Please login first'; return }
           msg.textContent = 'Opening ' + p.label + ' authorization...'
           try {
-            const r = await fetch('/api/oauth/start', {
-              method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tk },
-              body: JSON.stringify({ provider: p.id })
-            })
-            const d = await r.json()
-            if (d.error) { msg.textContent = d.error; return }
-            if (d.authUrl) window.open(d.authUrl, '_blank')
-            msg.textContent = '✅ Authorize in the popup. You\'ll be redirected back automatically.'
+          const r = await fetch('/api/oauth/start', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tk },
+            body: JSON.stringify({ provider: p.id })
+          })
+          const d = await r.json()
+          if (d.error) { msg.textContent = d.error; return }
+          /* Redirect main page — popups can't update it on callback */
+          if (d.authUrl) window.location.href = d.authUrl
           } catch { msg.textContent = 'Failed to start OAuth' }
         })
       }
@@ -235,6 +251,7 @@
       const d = await r.json()
       if (d.error) { msg.textContent = d.error; return }
       msg.textContent = '✅ Connected! Folder: ' + (d.folderId || 'created')
+      if (d.token) Store.set('authToken', d.token)
       document.getElementById('cloudAccessToken').value = ''
       document.getElementById('cloudRefreshToken').value = ''
     } catch { msg.textContent = 'Connection failed' }
@@ -244,12 +261,85 @@
   const params = new URLSearchParams(window.location.search)
   if (params.get('oauth_success')) {
     const cloudMsg = document.getElementById('cloudMsg')
-    if (cloudMsg) cloudMsg.textContent = '✅ Connected to ' + params.get('oauth_success').replace('_', ' ') + ' via OAuth!'
+    if (cloudMsg) cloudMsg.textContent = '✅ Connected to ' + params.get('oauth_success').replace('_', ' ') + ' via OAuth! Your files go to your personal folder.'
+    /* Store the new JWT if provided (embeds cloud info to survive DB resets) */
+    const newToken = params.get('token')
+    if (newToken) Store.set('authToken', newToken)
     const u = new URL(window.location); u.search = ''; window.history.replaceState({}, '', u)
+    /* Refresh cloud status from server */
+    const tk = Store.get('authToken', '')
+    if (tk) {
+      fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + tk } })
+        .then(r => r.json()).then(d => {
+          if (d.user) updateUI(d.user, d.clouds || [], d.envProviders || [])
+        }).catch(() => {})
+    }
   }
   if (params.get('oauth_error')) {
     const cloudMsg = document.getElementById('cloudMsg')
     if (cloudMsg) cloudMsg.textContent = '❌ OAuth error: ' + decodeURIComponent(params.get('oauth_error'))
     const u = new URL(window.location); u.search = ''; window.history.replaceState({}, '', u)
   }
+
+  /* Cloud file browser */
+  document.getElementById('cloudListBtn')?.addEventListener('click', async () => {
+    const listEl = document.getElementById('cloudFileList')
+    const token = authToken()
+    if (!token) { listEl.innerHTML = '<div class="text-xs c-warn">Login required</div>'; return }
+    listEl.innerHTML = '<div class="text-xs text-gray-500">📡 Loading files...</div>'
+    try {
+      const r = await fetch('/api/cloud/list?provider=dropbox', { headers: { 'Authorization': 'Bearer ' + token } })
+      const d = await r.json()
+      if (d.error) { listEl.innerHTML = '<div class="text-xs c-warn">' + d.error + '</div>'; return }
+      if (d.files && d.files.length) {
+        listEl.innerHTML = d.files.map(f =>
+          '<div class="flex items-center justify-between p-2 rounded-lg" style="background:var(--surface);border:1px solid var(--border);font-size:11px">' +
+            '<span>' + (f.type === 'folder' ? '📁' : '📄') + ' ' + f.name + '</span>' +
+            '<span class="text-gray-500">' + (f.size ? Math.round(f.size / 1024) + ' KB' : '') + '</span>' +
+          '</div>'
+        ).join('')
+      } else {
+        listEl.innerHTML = '<div class="text-xs text-gray-500">📂 No files found in your cloud folder.</div>'
+      }
+    } catch {
+      listEl.innerHTML = '<div class="text-xs c-warn">Failed to list files</div>'
+    }
+  })
+
+  document.getElementById('cloudRefreshBtn')?.addEventListener('click', () => {
+    const tk = authToken()
+    if (tk) {
+      fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + tk } })
+        .then(r => r.json()).then(d => {
+          if (d.user) updateUI(d.user, d.clouds || [], d.envProviders || [])
+          const msg = document.getElementById('cloudMsg')
+          if (msg) msg.textContent = '🔄 Status refreshed'
+        }).catch(() => {})
+    }
+  })
+
+  /* Secret admin gate: tap logo 7 times → admin panel */
+  let _tapCount = 0, _tapTimer, _hintEl
+  document.querySelectorAll('[src*="logo.jpeg"]').forEach(el => {
+    el.style.cursor = 'pointer'
+    el.addEventListener('click', (e) => {
+      e.stopPropagation()
+      _tapCount++
+      clearTimeout(_tapTimer)
+      _tapTimer = setTimeout(() => { _tapCount = 0; if (_hintEl) { _hintEl.remove(); _hintEl = null } }, 1200)
+      if (_tapCount >= 7) {
+        _tapCount = 0
+        if (_hintEl) { _hintEl.remove(); _hintEl = null }
+        window.location.href = '/admin.html'
+        return
+      }
+      if (_tapCount >= 5 && !_hintEl) {
+        _hintEl = document.createElement('div')
+        _hintEl.textContent = '🔐'
+        _hintEl.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1a1a28;border:1px solid #b388ff;color:#b388ff;font-size:20px;padding:8px 14px;border-radius:12px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.5);animation:fadeIn .3s;pointer-events:none'
+        document.body.appendChild(_hintEl)
+        setTimeout(() => { if (_hintEl) { _hintEl.style.opacity = '.6' } }, 300)
+      }
+    })
+  })
 })()

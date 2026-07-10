@@ -12,7 +12,7 @@ const createDB = require('../db');
 const app = express();
 const ROOT = path.join(__dirname, '..', 'dev');
 const JWT_SECRET = process.env.JWT_SECRET || 'diamerna_jwt_secret_' + uuid();
-const OAUTH_REDIRECT_URI = process.env.OAUTH_REDIRECT_URI || 'http://localhost:5500/api/oauth/callback';
+var OAUTH_REDIRECT_URI = process.env.OAUTH_REDIRECT_URI || '';
 
 const OAUTH = {};
 if (process.env.DROPBOX_CLIENT_ID) {
@@ -58,6 +58,9 @@ async function getDB() {
         type TEXT DEFAULT 'report', created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY(user_id) REFERENCES users(id)
       );`);
+      db.exec(`CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT DEFAULT (datetime('now'))
+      );`);
       _db = db;
       return db;
     });
@@ -72,14 +75,120 @@ function auth(req) {
   try { return jwt.verify(t, JWT_SECRET) } catch { return null }
 }
 
+/* Sign JWT with user info + cloud providers + tokens (so it survives DB resets) */
+function signToken(user, additionalClouds) {
+  const payload = { id: user.id, email: user.email, name: user.name };
+  if (additionalClouds && additionalClouds.length) {
+    payload.clouds = additionalClouds.map(c => ({
+      provider: c.provider,
+      folder_id: c.folder_id || '',
+      access_token: c.access_token || '',
+      refresh_token: c.refresh_token || ''
+    }));
+  }
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
+}
+
 /* OAuth token exchange */
 function oauthExchange(code, clientId, clientSecret) {
   return new Promise((resolve, reject) => {
     const body = new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: OAUTH_REDIRECT_URI, grant_type: 'authorization_code' }).toString();
-    const opts = { hostname: 'api.dropboxapi.com', path: '/oauth2/token', method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) } };
-    const r = https.request(opts, r2 => { let d = ''; r2.on('data', c => d += c); r2.on('end', () => { try { resolve(JSON.parse(d)) } catch { reject(new Error(d)) } }) });
-    r.on('error', reject); r.write(body); r.end();
+    const opts = { hostname: 'api.dropboxapi.com', path: '/oauth2/token', method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }, timeout: 15000 };
+    const r = https.request(opts, r2 => {
+      let d = '';
+      r2.on('data', c => d += c);
+      r2.on('end', () => {
+        try { const o = JSON.parse(d); if (r2.statusCode >= 400) reject(new Error(o.error_description || o.error || JSON.stringify(o))); else resolve(o); }
+        catch { reject(new Error('Dropbox OAuth returned: ' + d.slice(0, 200))) }
+      });
+    });
+    r.on('error', reject);
+    r.on('timeout', () => { r.destroy(); reject(new Error('Dropbox OAuth timed out')) });
+    r.write(body); r.end();
   });
+}
+
+/* Dropbox token refresh */
+async function dropboxRefreshToken(refreshToken) {
+  const creds = OAUTH.dropbox;
+  if (!creds || !creds.client_id || !creds.client_secret || !refreshToken) return null;
+  return new Promise((resolve, reject) => {
+    const body = new URLSearchParams({ refresh_token: refreshToken, client_id: creds.client_id, client_secret: creds.client_secret, grant_type: 'refresh_token' }).toString();
+    const opts = { hostname: 'api.dropboxapi.com', path: '/oauth2/token', method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }, timeout: 10000 };
+    const r = https.request(opts, r2 => {
+      let d = '';
+      r2.on('data', c => d += c);
+      r2.on('end', () => {
+        try { const o = JSON.parse(d); if (r2.statusCode >= 400) reject(new Error(o.error_description || o.error || JSON.stringify(o))); else resolve(o); }
+        catch { reject(new Error('Dropbox refresh returned non-JSON: ' + d.slice(0, 200))) }
+      });
+    });
+    r.on('error', reject);
+    r.on('timeout', () => { r.destroy(); reject(new Error('Dropbox token refresh timed out')) });
+    r.write(body); r.end();
+  });
+}
+
+/* Dropbox generic API call */
+function dropboxApi(hostname, path, method, headers, body) {
+  return new Promise((resolve, reject) => {
+    const opts = { hostname, path, method, headers: headers || {}, timeout: 15000 };
+    const r = https.request(opts, r2 => {
+      let d = '';
+      r2.on('data', c => d += c);
+      r2.on('end', () => {
+        try { const o = JSON.parse(d); if (r2.statusCode >= 400) reject(new Error(o.error_summary || o.error_description || JSON.stringify(o))); else resolve(o); }
+        catch { reject(new Error('Dropbox returned non-JSON: ' + (r2.statusCode || '?') + ' ' + d.slice(0, 200))) }
+      });
+    });
+    r.on('error', reject);
+    r.on('timeout', () => { r.destroy(); reject(new Error('Dropbox request timed out')) });
+    if (body) r.write(body);
+    r.end();
+  });
+}
+
+/* Ensure a valid access token (refresh if expired) and return { access_token, folder_id } */
+async function dropboxValidToken(db, userId, provider) {
+  let tok = db.prepare('SELECT * FROM cloud_tokens WHERE user_id = ? AND provider = ?').get(userId, provider);
+  if (!tok) return null;
+  if (tok.refresh_token) {
+    const refreshed = await dropboxRefreshToken(tok.refresh_token);
+    if (refreshed && refreshed.access_token) {
+      tok.access_token = refreshed.access_token;
+      db.prepare('UPDATE cloud_tokens SET access_token = ?, connected_at = datetime("now") WHERE id = ?').run(refreshed.access_token, tok.id);
+    }
+  }
+  return tok;
+}
+
+/* Get a valid Dropbox token from JWT cloud data (auto-refresh if needed) */
+async function dropboxTokenFromJWT(u, provider) {
+  if (!u.clouds) return null;
+  const c = u.clouds.find(x => x.provider === provider);
+  if (!c || !c.access_token) return null;
+  if (c.refresh_token) {
+    try {
+      const refreshed = await dropboxRefreshToken(c.refresh_token);
+      if (refreshed && refreshed.access_token) {
+        c.access_token = refreshed.access_token;
+        return { access_token: refreshed.access_token, folder_id: c.folder_id, refresh_token: c.refresh_token, _refreshed: true };
+      }
+    } catch {}
+  }
+  return { access_token: c.access_token, folder_id: c.folder_id, refresh_token: c.refresh_token || '' };
+}
+
+/* Ensure a folder path exists on Dropbox (App folder scope) */
+async function dropboxEnsureFolder(accessToken, folderPath) {
+  const body = JSON.stringify({ path: folderPath });
+  const headers = { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' };
+  try {
+    return await dropboxApi('api.dropboxapi.com', '/2/files/create_folder_v2', 'POST', headers, body);
+  } catch (e) {
+    if (e.message && e.message.includes('path/conflict/folder')) return { success: true };
+    throw e;
+  }
 }
 
 /* Middleware */
@@ -121,7 +230,8 @@ app.post('/api/login', async (req, res) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.status(401).json({ error: 'Invalid credentials' });
   rateLimitMap.delete(ip + '|' + email);
-  const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '30d' });
+  const dbClouds = db.prepare('SELECT provider, folder_id, access_token, refresh_token FROM cloud_tokens WHERE user_id = ?').all(user.id);
+  const token = signToken(user, dbClouds.length ? dbClouds : null);
   res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
 });
 
@@ -145,7 +255,9 @@ app.get('/api/me', async (req, res) => {
   let user = db.prepare('SELECT id, email, name, created_at FROM users WHERE id = ?').get(u.id);
   /* Fallback to JWT data if DB was wiped on cold start */
   if (!user) user = { id: u.id, email: u.email, name: u.name };
-  const clouds = db.prepare('SELECT provider, connected_at, folder_id FROM cloud_tokens WHERE user_id = ?').all(u.id);
+  const dbClouds = db.prepare('SELECT provider, connected_at, folder_id FROM cloud_tokens WHERE user_id = ?').all(u.id);
+  /* Use DB clouds if available, otherwise fallback to JWT clouds (survives DB resets) */
+  const clouds = dbClouds.length ? dbClouds : (u.clouds || []);
   const envProviders = Object.keys(OAUTH).filter(p => OAUTH[p] && OAUTH[p].client_id);
   res.json({ user, clouds, envProviders });
 });
@@ -156,13 +268,20 @@ app.post('/api/cloud/connect', async (req, res) => {
   if (!u) return res.status(401).json({ error: 'Unauthorized' });
   const { provider, access_token, refresh_token } = req.body;
   if (!provider || !access_token) return res.status(400).json({ error: 'provider and access_token required' });
+  const userName = u.name || u.email || 'user';
+  const folderId = '/DiaMerna/' + userName.replace(/[^a-zA-Z0-9_-]/g, '_');
   const existing = db.prepare('SELECT id FROM cloud_tokens WHERE user_id = ? AND provider = ?').get(u.id, provider);
   if (existing) {
-    db.prepare('UPDATE cloud_tokens SET access_token = ?, refresh_token = ?, connected_at = datetime("now") WHERE id = ?').run(access_token, refresh_token || '', existing.id);
+    db.prepare('UPDATE cloud_tokens SET access_token = ?, refresh_token = ?, folder_id = ?, connected_at = datetime("now") WHERE id = ?').run(access_token, refresh_token || '', folderId, existing.id);
   } else {
-    db.prepare('INSERT INTO cloud_tokens (id, user_id, provider, access_token, refresh_token) VALUES (?, ?, ?, ?, ?)').run(uuid(), u.id, provider, access_token, refresh_token || '');
+    db.prepare('INSERT INTO cloud_tokens (id, user_id, provider, access_token, refresh_token, folder_id) VALUES (?, ?, ?, ?, ?, ?)').run(uuid(), u.id, provider, access_token, refresh_token || '', folderId);
   }
-  res.json({ connected: true, provider });
+  db.prepare('UPDATE users SET name = ? WHERE id = ? AND (name IS NULL OR name = ?)').run(u.name, u.id, '');
+  /* Re-issue JWT with full cloud tokens so it survives DB resets */
+  const uClouds = (u.clouds || []).filter(c => c.provider !== provider);
+  uClouds.push({ provider, access_token, refresh_token: refresh_token || '', folder_id: folderId });
+  const newToken = signToken(u, uClouds);
+  res.json({ connected: true, provider, folderId, token: newToken });
 });
 
 app.post('/api/oauth/start', (req, res) => {
@@ -174,11 +293,12 @@ app.post('/api/oauth/start', (req, res) => {
   const creds = OAUTH.dropbox;
   if (!creds || !creds.client_id) return res.status(400).json({ error: 'Dropbox OAuth not configured. Set DROPBOX_CLIENT_ID env var.' });
   const state = JSON.stringify({ userId: u.id, provider });
+  const redirectUri = OAUTH_REDIRECT_URI || req.protocol + '://' + req.get('host') + '/api/oauth/callback';
   const authUrl = 'https://www.dropbox.com/oauth2/authorize?' + new URLSearchParams({
-    client_id: creds.client_id, redirect_uri: OAUTH_REDIRECT_URI,
+    client_id: creds.client_id, redirect_uri: redirectUri,
     response_type: 'code', token_access_type: 'offline', state
   }).toString();
-  res.json({ authUrl, provider });
+  res.json({ authUrl, provider, redirectUri });
 });
 
 app.get('/api/oauth/callback', async (req, res) => {
@@ -195,13 +315,23 @@ app.get('/api/oauth/callback', async (req, res) => {
   try {
     const tokenData = await oauthExchange(code, creds.client_id, creds.client_secret);
     if (tokenData.error) throw new Error(tokenData.error_description || tokenData.error);
+    const user = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(userId);
+    const userName = (user && user.name) || 'user';
+    const folderId = '/DiaMerna/' + userName.replace(/[^a-zA-Z0-9_-]/g, '_');
     const existing = db.prepare('SELECT id FROM cloud_tokens WHERE user_id = ? AND provider = ?').get(userId, 'dropbox');
     if (existing) {
-      db.prepare('UPDATE cloud_tokens SET access_token = ?, refresh_token = ?, connected_at = datetime("now") WHERE id = ?').run(tokenData.access_token, tokenData.refresh_token || '', existing.id);
+      db.prepare('UPDATE cloud_tokens SET access_token = ?, refresh_token = ?, folder_id = ?, connected_at = datetime("now") WHERE id = ?').run(tokenData.access_token, tokenData.refresh_token || '', folderId, existing.id);
     } else {
-      db.prepare('INSERT INTO cloud_tokens (id, user_id, provider, access_token, refresh_token) VALUES (?, ?, ?, ?, ?)').run(uuid(), userId, 'dropbox', tokenData.access_token, tokenData.refresh_token || '');
+      db.prepare('INSERT INTO cloud_tokens (id, user_id, provider, access_token, refresh_token, folder_id) VALUES (?, ?, ?, ?, ?, ?)').run(uuid(), userId, 'dropbox', tokenData.access_token, tokenData.refresh_token || '', folderId);
     }
-    res.redirect('/?oauth_success=dropbox');
+    /* Auto-create the user folder on Dropbox */
+    try {
+      await dropboxEnsureFolder(tokenData.access_token, folderId);
+    } catch {}
+    /* Re-issue JWT with full tokens so it survives DB resets */
+    const uInfo = user || { id: userId, name: userName, email: '' };
+    const newToken = signToken(uInfo, [{ provider: 'dropbox', access_token: tokenData.access_token, refresh_token: tokenData.refresh_token || '', folder_id: folderId }]);
+    res.redirect('/more.html?oauth_success=dropbox&token=' + encodeURIComponent(newToken));
   } catch (e) { res.redirect('/?oauth_error=' + encodeURIComponent(e.message)) }
 });
 
@@ -218,22 +348,50 @@ app.post('/api/cloud/upload', async (req, res) => {
   const { provider, fileName, content } = req.body;
   if (!provider || !fileName || !content) return res.status(400).json({ error: 'provider, fileName, content required' });
   if (provider !== 'dropbox') return res.status(400).json({ error: 'Only Dropbox is supported' });
-  const tok = db.prepare('SELECT * FROM cloud_tokens WHERE user_id = ? AND provider = ?').get(u.id, provider);
-  if (!tok) return res.status(400).json({ error: 'Provider not connected' });
+  let tok = await dropboxValidToken(db, u.id, provider);
+  if (!tok) tok = await dropboxTokenFromJWT(u, provider);
+  if (!tok) return res.status(400).json({ error: 'Provider not connected. Reconnect via OAuth.' });
+  const folderPath = tok.folder_id || '/DiaMerna/' + (u.name || 'user').replace(/[^a-zA-Z0-9_-]/g, '_');
   try {
-    const fd = await new Promise((resolve, reject) => {
-      const opts = {
-        hostname: 'content.dropboxapi.com', path: '/2/files/upload', method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + tok.access_token, 'Content-Type': 'application/octet-stream',
-          'Dropbox-API-Arg': JSON.stringify({ path: '/' + fileName, mode: 'add', autorename: true }), 'Content-Length': Buffer.byteLength(content) }
-      };
-      const r = https.request(opts, r2 => { let d = ''; r2.on('data', c => d += c); r2.on('end', () => { try { resolve(JSON.parse(d)) } catch { resolve({}) } }) });
-      r.on('error', reject); r.write(content); r.end();
-    });
-    const publicUrl = 'https://www.dropbox.com/home/' + (fd.path_display || fileName);
+    await dropboxEnsureFolder(tok.access_token, folderPath);
+    const dropboxPath = folderPath + '/' + fileName;
+    const uploadHeaders = {
+      'Authorization': 'Bearer ' + tok.access_token,
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify({ path: dropboxPath, mode: 'add', autorename: true }),
+      'Content-Length': Buffer.byteLength(content)
+    };
+    const fd = await dropboxApi('content.dropboxapi.com', '/2/files/upload', 'POST', uploadHeaders, content);
+    if (fd.error) throw new Error(fd.error_summary || JSON.stringify(fd.error));
+    const publicUrl = 'https://www.dropbox.com/home' + (fd.path_display || dropboxPath);
     db.prepare('INSERT INTO files (id, user_id, name, provider, cloud_file_id, public_url) VALUES (?, ?, ?, ?, ?, ?)').run(uuid(), u.id, fileName, provider, fd.id || uuid(), publicUrl);
-    res.json({ uploaded: true, fileName, publicUrl, provider });
+    /* If token was refreshed from JWT, return new token */
+    const newToken = (tok._refreshed) ? signToken(u, u.clouds) : null;
+    res.json({ uploaded: true, fileName, publicUrl, provider, path: dropboxPath, token: newToken });
   } catch (e) { res.status(500).json({ error: 'Upload failed', detail: e.message }) }
+});
+
+app.get('/api/cloud/list', async (req, res) => {
+  const db = await getDB();
+  const u = auth(req);
+  if (!u) return res.status(401).json({ error: 'Unauthorized' });
+  const { provider } = req.query;
+  if (!provider) return res.status(400).json({ error: 'provider required' });
+  let tok = await dropboxValidToken(db, u.id, provider);
+  if (!tok) tok = await dropboxTokenFromJWT(u, provider);
+  if (!tok) return res.status(400).json({ error: 'Provider not connected. Reconnect via OAuth.' });
+  const folderPath = tok.folder_id || '/DiaMerna/' + (u.name || 'user').replace(/[^a-zA-Z0-9_-]/g, '_');
+  try {
+    const body = JSON.stringify({ path: folderPath, limit: 50 });
+    const headers = { 'Authorization': 'Bearer ' + tok.access_token, 'Content-Type': 'application/json' };
+    const result = await dropboxApi('api.dropboxapi.com', '/2/files/list_folder', 'POST', headers, body);
+    if (result.error) return res.json({ files: [], error: result.error_summary });
+    const entries = (result.entries || []).map(e => ({
+      name: e.name, path_display: e.path_display, id: e.id,
+      size: e.size, modified: e.server_modified, type: e['.tag']
+    }));
+    res.json({ files: entries, path: folderPath });
+  } catch (e) { res.status(500).json({ error: 'List failed', detail: e.message }) }
 });
 
 app.get('/api/files', async (req, res) => {
@@ -283,6 +441,64 @@ app.get('/api/admin/stats', async (req, res) => {
   const totalUsers = (db.prepare('SELECT COUNT(*) AS c FROM users').get() || {}).c || 0;
   const dropboxConnections = (db.prepare('SELECT COUNT(DISTINCT user_id) AS c FROM cloud_tokens WHERE provider = ?').get('dropbox') || {}).c || 0;
   res.json({ totalUsers, dropboxConnections });
+});
+
+function adminAuth(req) {
+  const h = req.headers['authorization'] || '';
+  const t = h.replace('Bearer ', '');
+  try { const p = jwt.verify(t, JWT_SECRET); return p.role === 'admin' ? p : null } catch { return null }
+}
+
+app.get('/api/admin/users', async (req, res) => {
+  if (!adminAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const db = await getDB();
+  const users = db.prepare('SELECT id, email, name, created_at FROM users ORDER BY created_at DESC').all();
+  res.json({ users });
+});
+
+app.post('/api/admin/query', async (req, res) => {
+  if (!adminAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const { sql, params } = req.body;
+  if (!sql) return res.status(400).json({ error: 'sql required' });
+  const lower = sql.trim().toLowerCase();
+  if (lower.startsWith('drop') || lower.startsWith('delete') || lower.startsWith('update')) {
+    return res.status(403).json({ error: 'Destructive queries not allowed via this endpoint' });
+  }
+  try {
+    const db = await getDB();
+    const stmt = db.prepare(sql);
+    let result;
+    if (lower.startsWith('select')) {
+      result = stmt.all.apply(stmt, params || []);
+    } else {
+      result = stmt.run.apply(stmt, params || []);
+    }
+    res.json({ success: true, result });
+  } catch (e) { res.status(400).json({ error: e.message }) }
+});
+
+app.get('/api/admin/settings', async (req, res) => {
+  if (!adminAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const db = await getDB();
+  const rows = db.prepare('SELECT key, value FROM settings').all();
+  const settings = {};
+  rows.forEach(r => settings[r.key] = r.value);
+  res.json({ settings });
+});
+
+app.post('/api/admin/settings', async (req, res) => {
+  if (!adminAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const { settings } = req.body;
+  if (!settings || typeof settings !== 'object') return res.status(400).json({ error: 'settings object required' });
+  const db = await getDB();
+  const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, datetime("now"))');
+  const tx = db.transaction(() => {
+    for (const [key, value] of Object.entries(settings)) {
+      upsert.run(key, String(value));
+    }
+  });
+  tx();
+  res.json({ success: true, applied: Object.keys(settings) });
 });
 
 /* Static files */

@@ -150,7 +150,7 @@
         btn.textContent = '☁️ Uploading...'
         const token = Store.get('authToken', '')
         if (!token) { btn.textContent = '☁️ Login required'; return }
-        const provider = 'google_drive'
+        const provider = 'dropbox'
         const reportText = document.getElementById('docReportContainer')?.innerText || 'DiaMerna Report'
         try {
           const r = await fetch('/api/cloud/upload', {
