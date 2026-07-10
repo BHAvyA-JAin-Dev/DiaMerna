@@ -239,4 +239,67 @@
     }
   })
   renderUploaded()
+
+  /* ===== Profile Editing ===== */
+  async function loadProfile() {
+    const token = Store.get('authToken', '')
+    if (!token) return
+    try {
+      const r = await fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + token } })
+      const d = await r.json()
+      if (!d.profile) return
+      const p = d.profile
+      document.getElementById('profName').textContent = p.name || '—'
+      document.getElementById('profDob').textContent = p.dob || '—'
+      document.getElementById('profLmp').textContent = p.lmp || '—'
+      document.getElementById('profPreg').textContent = p.is_pregnant ? '✅ Yes' : '❌ No'
+      document.getElementById('profCycle').textContent = p.cycle_length || '—'
+      document.getElementById('profGoal').textContent = p.health_goal ? p.health_goal.replace(/-/g, ' ') : '—'
+    } catch {}
+  }
+  loadProfile()
+
+  document.getElementById('profileEditBtn')?.addEventListener('click', () => {
+    document.getElementById('profileEditForm').style.display = 'block'
+    document.getElementById('profEditName').value = document.getElementById('profName').textContent === '—' ? '' : document.getElementById('profName').textContent
+    document.getElementById('profEditDob').value = document.getElementById('profDob').textContent === '—' ? '' : document.getElementById('profDob').textContent
+    document.getElementById('profEditLmp').value = document.getElementById('profLmp').textContent === '—' ? '' : document.getElementById('profLmp').textContent
+    document.getElementById('profEditPreg').checked = document.getElementById('profPreg').textContent === '✅ Yes'
+    document.getElementById('profEditCycle').value = document.getElementById('profCycle').textContent === '—' ? 28 : parseInt(document.getElementById('profCycle').textContent)
+  })
+
+  document.getElementById('profCancelBtn')?.addEventListener('click', () => {
+    document.getElementById('profileEditForm').style.display = 'none'
+    document.getElementById('profMsg').textContent = ''
+  })
+
+  document.getElementById('profSaveBtn')?.addEventListener('click', async () => {
+    const token = Store.get('authToken', '')
+    if (!token) { document.getElementById('profMsg').textContent = '❌ Login required'; return }
+    const name = document.getElementById('profEditName').value.trim()
+    if (!name) { document.getElementById('profMsg').textContent = '❌ Name is required'; return }
+    const body = {
+      name,
+      dob: document.getElementById('profEditDob').value,
+      lmp: document.getElementById('profEditLmp').value,
+      is_pregnant: document.getElementById('profEditPreg').checked,
+      cycle_length: parseInt(document.getElementById('profEditCycle').value) || 28,
+      health_goal: document.getElementById('profEditGoal').value
+    }
+    document.getElementById('profMsg').textContent = '⏳ Saving...'
+    try {
+      const r = await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(body) })
+      const d = await r.json()
+      if (d.profile) {
+        document.getElementById('profMsg').textContent = '✅ Saved!'
+        document.getElementById('profileEditForm').style.display = 'none'
+        loadProfile()
+        /* Also update local onboarding data */
+        Store.set('userName', name)
+        if (body.lmp) Store.set('lmp', body.lmp)
+        if (body.is_pregnant) { Store.set('pregnant', true); if (body.lmp) { const pw = pregnancyWeek(body.lmp); Store.set('pregWeek', pw.w) } }
+        setTimeout(() => document.getElementById('profMsg').textContent = '', 2000)
+      } else { document.getElementById('profMsg').textContent = '❌ ' + (d.error || 'Save failed') }
+    } catch { document.getElementById('profMsg').textContent = '❌ Server error' }
+  })
 })()

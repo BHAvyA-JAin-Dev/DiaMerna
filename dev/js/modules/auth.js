@@ -155,10 +155,13 @@
     renderCloudProviders(clouds, envProviders || [])
   }
 
-  /* Logout */
-  document.getElementById('authLogoutBtn')?.addEventListener('click', () => {
-    Store.remove('authToken'); Store.remove('userEmail'); Store.remove('userName')
-    location.reload()
+  /* Logout — delegated on sidebarNav for reliability */
+  document.getElementById('sidebarNav')?.addEventListener('click', e => {
+    if (!e.target.closest('#authLogoutBtn')) return
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('dm_'))
+    keys.forEach(k => localStorage.removeItem(k))
+    const u = new URL(window.location); u.search = ''; window.history.replaceState({}, '', u)
+    location.href = '/'
   })
 
   /* ===== Multi-Provider Cloud Config (env-only OAuth) ===== */

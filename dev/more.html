@@ -98,7 +98,7 @@
 
     <div class="sidebar-cat">⚙️ SETTINGS</div>
     <a class="sidebar-item" id="sidebarTheme">🌙 Toggle Theme</a>
-    <a class="sidebar-item" id="sidebarEditName">✏️ Edit My Name</a>
+    <a class="sidebar-item" href="more.html#profileCard">👤 My Profile</a>
     <a class="sidebar-item" href="more.html#cloudSettingsCard">☁️ Cloud Storage</a>
     <a class="sidebar-item" id="sidebarCloudBtn">🔐 My Account</a>
     <a class="sidebar-item" id="authLogoutBtn" style="color:var(--warn)">🚪 Logout</a>
@@ -157,6 +157,37 @@
       <div class="flex items-center gap-2 mt-2"><label class="text-[10px] text-gray-500 flex items-center gap-1 cursor-pointer"><input type="checkbox" id="sympIncludeGlucose" checked> Include glucose</label><label class="text-[10px] text-gray-500 flex items-center gap-1 cursor-pointer"><input type="checkbox" id="sympIncludeMeds" checked> Include meds</label></div>
       <button id="sympAnalyzeBtn" class="btn-primary w-full text-sm mt-2">🤖 Analyze Symptoms with AI</button>
       <div id="sympResult" class="mt-3 text-xs leading-relaxed" style="display:none"></div>
+    </div>
+
+    <div class="card glass" id="profileCard">
+      <div class="card-header"><span class="text-xl">👤</span><h3>My Profile</h3></div>
+      <div class="space-y-2 text-sm" id="profileDisplay">
+        <div><span class="text-gray-500">Name:</span> <span id="profName">—</span></div>
+        <div><span class="text-gray-500">DOB:</span> <span id="profDob">—</span></div>
+        <div><span class="text-gray-500">LMP:</span> <span id="profLmp">—</span></div>
+        <div><span class="text-gray-500">Pregnant:</span> <span id="profPreg">—</span></div>
+        <div><span class="text-gray-500">Cycle:</span> <span id="profCycle">—</span> days</div>
+        <div><span class="text-gray-500">Goal:</span> <span id="profGoal">—</span></div>
+      </div>
+      <button id="profileEditBtn" class="btn-primary w-full text-sm mt-3">✏️ Edit Profile</button>
+      <div id="profileEditForm" style="display:none" class="mt-3 space-y-2">
+        <input type="text" id="profEditName" placeholder="Name" class="input w-full text-sm">
+        <input type="date" id="profEditDob" class="input w-full text-sm">
+        <input type="date" id="profEditLmp" class="input w-full text-sm">
+        <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" id="profEditPreg" class="w-4 h-4 accent-cyber-pink" checked> 🤰 Pregnant</label>
+        <div><label class="text-[11px] text-gray-500">Cycle Length</label><input type="number" id="profEditCycle" value="28" min="20" max="45" class="input w-20 text-sm"></div>
+        <select id="profEditGoal" class="input w-full text-sm" style="font-family:inherit">
+          <option value="gestational-diabetes">🩸 Gestational Diabetes Management</option>
+          <option value="blood-sugar">📊 Blood Sugar Control</option>
+          <option value="general-wellness">🌿 General Pregnancy Wellness</option>
+          <option value="weight-management">⚖️ Healthy Weight Gain</option>
+        </select>
+        <div class="flex gap-2">
+          <button id="profSaveBtn" class="btn-primary text-sm flex-1">💾 Save</button>
+          <button id="profCancelBtn" class="btn-outline text-sm flex-1" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer">Cancel</button>
+        </div>
+        <div id="profMsg" class="text-xs text-center"></div>
+      </div>
     </div>
 
     <div class="card glass" id="cloudSettingsCard">

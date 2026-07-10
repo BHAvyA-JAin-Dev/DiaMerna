@@ -65,5 +65,15 @@
     if (typeof window.renderBaby === 'function') setTimeout(window.renderBaby, 100)
     if (typeof window.renderGlucose === 'function') setTimeout(window.renderGlucose, 100)
     if (typeof window.renderHealth === 'function') setTimeout(window.renderHealth, 100)
+
+    /* Save profile to server */
+    const token = Store.get('authToken', '')
+    if (token) {
+      fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ name, dob, lmp, is_pregnant, cycle_length: cycle, health_goal: goal })
+      }).catch(() => {})
+    }
   })
 })()

@@ -1,16 +1,12 @@
 {
-  "services": {
-    "diamerna-server": {
-      "root": "."
-    }
-  },
-  "rewrites": [
+  "version": 2,
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": {
-        "type": "service",
-        "service": "diamerna-server"
-      }
+      "src": "api/index.js",
+      "use": "@vercel/node"
     }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/api/index.js" }
   ]
 }

@@ -129,6 +129,12 @@ if (PERSISTENT_SERVER_URL) {
         await db.exec(`CREATE TABLE IF NOT EXISTS settings (
           key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT DEFAULT (datetime('now'))
         );`);
+        await db.exec(`CREATE TABLE IF NOT EXISTS profiles (
+          user_id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', dob TEXT DEFAULT '',
+          lmp TEXT DEFAULT '', is_pregnant INTEGER DEFAULT 1, cycle_length INTEGER DEFAULT 28,
+          health_goal TEXT DEFAULT 'general-wellness', updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY(user_id) REFERENCES users(id)
+        );`);
         _db = db;
         return db;
       });
@@ -307,6 +313,31 @@ if (PERSISTENT_SERVER_URL) {
     const clouds = dbClouds.length ? dbClouds : (u.clouds || []);
     const envProviders = Object.keys(OAUTH).filter(p => OAUTH[p] && OAUTH[p].client_id);
     res.json({ user, clouds, envProviders });
+  });
+
+  /* Profile */
+  app.get('/api/profile', async (req, res) => {
+    const db = await getDB();
+    const u = auth(req);
+    if (!u) return res.status(401).json({ error: 'Unauthorized' });
+    let profile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(u.id);
+    if (!profile) profile = { user_id: u.id, name: u.name || '', dob: '', lmp: '', is_pregnant: 1, cycle_length: 28, health_goal: 'general-wellness' };
+    res.json({ profile });
+  });
+
+  app.put('/api/profile', async (req, res) => {
+    const db = await getDB();
+    const u = auth(req);
+    if (!u) return res.status(401).json({ error: 'Unauthorized' });
+    const { name, dob, lmp, is_pregnant, cycle_length, health_goal } = req.body;
+    const existing = await db.prepare('SELECT user_id FROM profiles WHERE user_id = ?').get(u.id);
+    if (existing) {
+      await db.prepare("UPDATE profiles SET name=?, dob=?, lmp=?, is_pregnant=?, cycle_length=?, health_goal=?, updated_at=datetime('now') WHERE user_id=?").run(name||'', dob||'', lmp||'', is_pregnant?1:0, cycle_length||28, health_goal||'general-wellness', u.id);
+    } else {
+      await db.prepare("INSERT INTO profiles (user_id,name,dob,lmp,is_pregnant,cycle_length,health_goal) VALUES (?,?,?,?,?,?,?)").run(u.id, name||'', dob||'', lmp||'', is_pregnant?1:0, cycle_length||28, health_goal||'general-wellness');
+    }
+    const profile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(u.id);
+    res.json({ profile });
   });
 
   app.post('/api/cloud/connect', async (req, res) => {

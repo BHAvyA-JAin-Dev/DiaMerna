@@ -23,7 +23,7 @@ app.use(cors())
 app.use(express.json({ limit: '50mb' }))
 
 /* ===== Persistent Database (better-sqlite3) ===== */
-const DB_DIR = process.env.DB_DIR || path.join(__dirname, 'data')
+const DB_DIR = process.env.DB_DIR || (process.env.VERCEL ? '/tmp/data' : path.join(__dirname, 'data'))
 const DB_PATH = path.join(DB_DIR, 'diamerna.db')
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true })
 
@@ -87,7 +87,14 @@ function initDB() {
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY(user_id) REFERENCES users(id)
     );
-  `)
+    CREATE TABLE IF NOT EXISTS profiles (
+      user_id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '',
+      dob TEXT DEFAULT '', lmp TEXT DEFAULT '',
+      is_pregnant INTEGER DEFAULT 1, cycle_length INTEGER DEFAULT 28,
+      health_goal TEXT DEFAULT 'general-wellness',
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    );`
   console.log('✅ Database ready at', DB_PATH)
 }
 initDB()
@@ -276,6 +283,29 @@ app.get('/api/me', (req, res) => {
   const clouds = dbClouds.length ? dbClouds : (u.clouds || [])
   const envProviders = Object.keys(OAUTH).filter(p => OAUTH[p] && OAUTH[p].client_id)
   res.json({ user, clouds, envProviders })
+})
+
+/* Profile */
+app.get('/api/profile', (req, res) => {
+  const u = auth(req)
+  if (!u) return res.status(401).json({ error: 'Unauthorized' })
+  let profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(u.id)
+  if (!profile) profile = { user_id: u.id, name: u.name || '', dob: '', lmp: '', is_pregnant: 1, cycle_length: 28, health_goal: 'general-wellness' }
+  res.json({ profile })
+})
+
+app.put('/api/profile', (req, res) => {
+  const u = auth(req)
+  if (!u) return res.status(401).json({ error: 'Unauthorized' })
+  const { name, dob, lmp, is_pregnant, cycle_length, health_goal } = req.body
+  const existing = db.prepare('SELECT user_id FROM profiles WHERE user_id = ?').get(u.id)
+  if (existing) {
+    db.prepare(`UPDATE profiles SET name=?, dob=?, lmp=?, is_pregnant=?, cycle_length=?, health_goal=?, updated_at=datetime('now') WHERE user_id=?`).run(name||'', dob||'', lmp||'', is_pregnant?1:0, cycle_length||28, health_goal||'general-wellness', u.id)
+  } else {
+    db.prepare(`INSERT INTO profiles (user_id,name,dob,lmp,is_pregnant,cycle_length,health_goal) VALUES (?,?,?,?,?,?,?)`).run(u.id, name||'', dob||'', lmp||'', is_pregnant?1:0, cycle_length||28, health_goal||'general-wellness')
+  }
+  const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(u.id)
+  res.json({ profile })
 })
 
 /* ===== OAuth Routes ===== */
@@ -649,6 +679,8 @@ app.get('*', (req, res) => {
   }
 })
 
+module.exports = app;
+if (require.main === module || !process.env.VERCEL) {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔═══════════════════════════════════════════╗
@@ -659,3 +691,4 @@ app.listen(PORT, '0.0.0.0', () => {
 ╚═══════════════════════════════════════════╝
   `)
 })
+}
