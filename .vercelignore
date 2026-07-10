@@ -1,0 +1,7 @@
+desktop/
+mobile/
+server/
+dist-release/
+scripts/
+encrypt-keys.js
+node_modules/
