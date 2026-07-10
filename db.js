@@ -1,9 +1,36 @@
-/* SQLite compatibility layer — async init, returns db-like object */
+/* Database abstraction layer — Turso (libSQL) with sql.js fallback
+   All methods return promises for consistent async usage. */
 const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 
 module.exports = async function createDB() {
+  const TURSO_URL = process.env.TURSO_DB_URL;
+  const TURSO_TOKEN = process.env.TURSO_DB_AUTH_TOKEN;
+
+  if (TURSO_URL && TURSO_TOKEN) {
+    try {
+      const { createClient } = require('@libsql/client');
+      const turso = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN });
+      await turso.execute('SELECT 1');
+      console.log('🟢 Turso connected');
+      return makeAsync({
+        exec(sql) { return turso.execute(sql) },
+        prepare(sql) {
+          return {
+            run(...params) { return turso.execute({ sql, args: params.length ? params : undefined }) },
+            async get(...params) { const r = await turso.execute({ sql, args: params.length ? params : undefined }); return r.rows[0] || null },
+            async all(...params) { const r = await turso.execute({ sql, args: params.length ? params : undefined }); return r.rows }
+          };
+        },
+        close() {}
+      });
+    } catch (e) {
+      console.warn('Turso unavailable, falling back to sql.js:', e.message);
+    }
+  }
+
+  /* sql.js fallback */
   const DB_PATH = process.env.VERCEL ? '/tmp/diamerna.db' : path.join(__dirname, 'diamerna.db');
   const SQL = await initSqlJs({
     locateFile: file => path.join(__dirname, 'node_modules', 'sql.js', 'dist', file)
@@ -18,7 +45,7 @@ module.exports = async function createDB() {
     }
   }
 
-  return {
+  return makeAsync({
     exec(sql) { _db.exec(sql); _save() },
     prepare(sql) {
       return {
@@ -39,5 +66,17 @@ module.exports = async function createDB() {
     },
     close() { _save(); _db.close() },
     pragma() {}
-  };
+  });
 };
+
+function makeAsync(syncDb) {
+  const wrap = (fn) => (...args) => Promise.resolve(fn(...args));
+  return {
+    exec: wrap(syncDb.exec),
+    prepare(sql) {
+      const stmt = syncDb.prepare(sql);
+      return { run: wrap(stmt.run), get: wrap(stmt.get), all: wrap(stmt.all) };
+    },
+    close: wrap(syncDb.close)
+  };
+}

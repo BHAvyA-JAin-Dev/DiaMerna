@@ -108,25 +108,25 @@ if (PERSISTENT_SERVER_URL) {
   async function getDB() {
     if (_db) return _db;
     if (!_dbPromise) {
-      _dbPromise = createDB().then(db => {
-        db.exec(`CREATE TABLE IF NOT EXISTS users (
+      _dbPromise = createDB().then(async db => {
+        await db.exec(`CREATE TABLE IF NOT EXISTS users (
           id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, name TEXT NOT NULL,
           password TEXT NOT NULL, pin TEXT NOT NULL,
           created_at TEXT DEFAULT (datetime('now'))
         );`);
-        db.exec(`CREATE TABLE IF NOT EXISTS cloud_tokens (
+        await db.exec(`CREATE TABLE IF NOT EXISTS cloud_tokens (
           id TEXT PRIMARY KEY, user_id TEXT NOT NULL, provider TEXT NOT NULL,
           access_token TEXT, refresh_token TEXT, folder_id TEXT,
           connected_at TEXT DEFAULT (datetime('now')),
           FOREIGN KEY(user_id) REFERENCES users(id)
         );`);
-        db.exec(`CREATE TABLE IF NOT EXISTS files (
+        await db.exec(`CREATE TABLE IF NOT EXISTS files (
           id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL,
           provider TEXT, cloud_file_id TEXT, public_url TEXT,
           type TEXT DEFAULT 'report', created_at TEXT DEFAULT (datetime('now')),
           FOREIGN KEY(user_id) REFERENCES users(id)
         );`);
-        db.exec(`CREATE TABLE IF NOT EXISTS settings (
+        await db.exec(`CREATE TABLE IF NOT EXISTS settings (
           key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT DEFAULT (datetime('now'))
         );`);
         _db = db;
@@ -207,13 +207,13 @@ if (PERSISTENT_SERVER_URL) {
   }
 
   async function dropboxValidToken(db, userId, provider) {
-    let tok = db.prepare('SELECT * FROM cloud_tokens WHERE user_id = ? AND provider = ?').get(userId, provider);
+    let tok = await db.prepare('SELECT * FROM cloud_tokens WHERE user_id = ? AND provider = ?').get(userId, provider);
     if (!tok) return null;
     if (tok.refresh_token) {
       const refreshed = await dropboxRefreshToken(tok.refresh_token);
       if (refreshed && refreshed.access_token) {
         tok.access_token = refreshed.access_token;
-        db.prepare('UPDATE cloud_tokens SET access_token = ?, connected_at = datetime("now") WHERE id = ?').run(refreshed.access_token, tok.id);
+        await db.prepare('UPDATE cloud_tokens SET access_token = ?, connected_at = datetime("now") WHERE id = ?').run(refreshed.access_token, tok.id);
       }
     }
     return tok;
@@ -257,12 +257,12 @@ if (PERSISTENT_SERVER_URL) {
     const { email, password, name, pin } = req.body;
     if (!email || !password || !name || !pin) return res.status(400).json({ error: 'email, password, name, and pin required' });
     if (!/^\d{4,6}$/.test(pin)) return res.status(400).json({ error: 'PIN must be 4-6 digits' });
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    const existing = await db.prepare('SELECT id FROM users WHERE email = ?').get(email);
     if (existing) return res.status(409).json({ error: 'Email already registered' });
     const hash = await bcrypt.hash(password, 10);
     const pinHash = await bcrypt.hash(pin, 10);
     const id = uuid();
-    db.prepare('INSERT INTO users (id, email, name, password, pin) VALUES (?, ?, ?, ?, ?)').run(id, email, name, hash, pinHash);
+    await db.prepare('INSERT INTO users (id, email, name, password, pin) VALUES (?, ?, ?, ?, ?)').run(id, email, name, hash, pinHash);
     const token = jwt.sign({ id, email, name }, JWT_SECRET, { expiresIn: '30d' });
     res.status(201).json({ token, user: { id, email, name } });
   });
@@ -274,12 +274,12 @@ if (PERSISTENT_SERVER_URL) {
     const rl = rateLimit(ip, email);
     if (rl.count > 10) return res.status(429).json({ error: 'Too many attempts for this account. Try again in 15 minutes.' });
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    const user = await db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: 'Invalid credentials' });
     rateLimitMap.delete(ip + '|' + email);
-    const dbClouds = db.prepare('SELECT provider, folder_id, access_token, refresh_token FROM cloud_tokens WHERE user_id = ?').all(user.id);
+    const dbClouds = await db.prepare('SELECT provider, folder_id, access_token, refresh_token FROM cloud_tokens WHERE user_id = ?').all(user.id);
     const token = signToken(user, dbClouds.length ? dbClouds : null);
     res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
   });
@@ -288,12 +288,12 @@ if (PERSISTENT_SERVER_URL) {
     const db = await getDB();
     const { email, pin, newPassword } = req.body;
     if (!email || !pin || !newPassword) return res.status(400).json({ error: 'email, pin, and newPassword required' });
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    const user = await db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     if (!user) return res.status(404).json({ error: 'Email not found' });
     const match = await bcrypt.compare(pin, user.pin);
     if (!match) return res.status(401).json({ error: 'Invalid PIN' });
     const hash = await bcrypt.hash(newPassword, 10);
-    db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hash, user.id);
+    await db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hash, user.id);
     res.json({ success: true, message: 'Password reset successfully.' });
   });
 
@@ -301,9 +301,9 @@ if (PERSISTENT_SERVER_URL) {
     const db = await getDB();
     const u = auth(req);
     if (!u) return res.status(401).json({ error: 'Unauthorized' });
-    let user = db.prepare('SELECT id, email, name, created_at FROM users WHERE id = ?').get(u.id);
+    let user = await db.prepare('SELECT id, email, name, created_at FROM users WHERE id = ?').get(u.id);
     if (!user) user = { id: u.id, email: u.email, name: u.name };
-    const dbClouds = db.prepare('SELECT provider, connected_at, folder_id FROM cloud_tokens WHERE user_id = ?').all(u.id);
+    const dbClouds = await db.prepare('SELECT provider, connected_at, folder_id FROM cloud_tokens WHERE user_id = ?').all(u.id);
     const clouds = dbClouds.length ? dbClouds : (u.clouds || []);
     const envProviders = Object.keys(OAUTH).filter(p => OAUTH[p] && OAUTH[p].client_id);
     res.json({ user, clouds, envProviders });
@@ -317,13 +317,13 @@ if (PERSISTENT_SERVER_URL) {
     if (!provider || !access_token) return res.status(400).json({ error: 'provider and access_token required' });
     const userName = u.name || u.email || 'user';
     const folderId = '/DiaMerna/' + userName.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const existing = db.prepare('SELECT id FROM cloud_tokens WHERE user_id = ? AND provider = ?').get(u.id, provider);
+    const existing = await db.prepare('SELECT id FROM cloud_tokens WHERE user_id = ? AND provider = ?').get(u.id, provider);
     if (existing) {
-      db.prepare('UPDATE cloud_tokens SET access_token = ?, refresh_token = ?, folder_id = ?, connected_at = datetime("now") WHERE id = ?').run(access_token, refresh_token || '', folderId, existing.id);
+      await db.prepare('UPDATE cloud_tokens SET access_token = ?, refresh_token = ?, folder_id = ?, connected_at = datetime("now") WHERE id = ?').run(access_token, refresh_token || '', folderId, existing.id);
     } else {
-      db.prepare('INSERT INTO cloud_tokens (id, user_id, provider, access_token, refresh_token, folder_id) VALUES (?, ?, ?, ?, ?, ?)').run(uuid(), u.id, provider, access_token, refresh_token || '', folderId);
+      await db.prepare('INSERT INTO cloud_tokens (id, user_id, provider, access_token, refresh_token, folder_id) VALUES (?, ?, ?, ?, ?, ?)').run(uuid(), u.id, provider, access_token, refresh_token || '', folderId);
     }
-    db.prepare('UPDATE users SET name = ? WHERE id = ? AND (name IS NULL OR name = ?)').run(u.name, u.id, '');
+    await db.prepare('UPDATE users SET name = ? WHERE id = ? AND (name IS NULL OR name = ?)').run(u.name, u.id, '');
     const uClouds = (u.clouds || []).filter(c => c.provider !== provider);
     uClouds.push({ provider, access_token, refresh_token: refresh_token || '', folder_id: folderId });
     const newToken = signToken(u, uClouds);
@@ -361,14 +361,14 @@ if (PERSISTENT_SERVER_URL) {
     try {
       const tokenData = await oauthExchange(code, creds.client_id, creds.client_secret);
       if (tokenData.error) throw new Error(tokenData.error_description || tokenData.error);
-      const user = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(userId);
+      const user = await db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(userId);
       const userName = (user && user.name) || 'user';
       const folderId = '/DiaMerna/' + userName.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const existing = db.prepare('SELECT id FROM cloud_tokens WHERE user_id = ? AND provider = ?').get(userId, 'dropbox');
+      const existing = await db.prepare('SELECT id FROM cloud_tokens WHERE user_id = ? AND provider = ?').get(userId, 'dropbox');
       if (existing) {
-        db.prepare('UPDATE cloud_tokens SET access_token = ?, refresh_token = ?, folder_id = ?, connected_at = datetime("now") WHERE id = ?').run(tokenData.access_token, tokenData.refresh_token || '', folderId, existing.id);
+        await db.prepare('UPDATE cloud_tokens SET access_token = ?, refresh_token = ?, folder_id = ?, connected_at = datetime("now") WHERE id = ?').run(tokenData.access_token, tokenData.refresh_token || '', folderId, existing.id);
       } else {
-        db.prepare('INSERT INTO cloud_tokens (id, user_id, provider, access_token, refresh_token, folder_id) VALUES (?, ?, ?, ?, ?, ?)').run(uuid(), userId, 'dropbox', tokenData.access_token, tokenData.refresh_token || '', folderId);
+        await db.prepare('INSERT INTO cloud_tokens (id, user_id, provider, access_token, refresh_token, folder_id) VALUES (?, ?, ?, ?, ?, ?)').run(uuid(), userId, 'dropbox', tokenData.access_token, tokenData.refresh_token || '', folderId);
       }
       try { await dropboxEnsureFolder(tokenData.access_token, folderId); } catch {}
       const uInfo = user || { id: userId, name: userName, email: '' };
@@ -406,7 +406,7 @@ if (PERSISTENT_SERVER_URL) {
       const fd = await dropboxApi('content.dropboxapi.com', '/2/files/upload', 'POST', uploadHeaders, content);
       if (fd.error) throw new Error(fd.error_summary || JSON.stringify(fd.error));
       const publicUrl = 'https://www.dropbox.com/home' + (fd.path_display || dropboxPath);
-      db.prepare('INSERT INTO files (id, user_id, name, provider, cloud_file_id, public_url) VALUES (?, ?, ?, ?, ?, ?)').run(uuid(), u.id, fileName, provider, fd.id || uuid(), publicUrl);
+      await db.prepare('INSERT INTO files (id, user_id, name, provider, cloud_file_id, public_url) VALUES (?, ?, ?, ?, ?, ?)').run(uuid(), u.id, fileName, provider, fd.id || uuid(), publicUrl);
       const newToken = (tok._refreshed) ? signToken(u, u.clouds) : null;
       res.json({ uploaded: true, fileName, publicUrl, provider, path: dropboxPath, token: newToken });
     } catch (e) { res.status(500).json({ error: 'Upload failed', detail: e.message }) }
@@ -439,7 +439,7 @@ if (PERSISTENT_SERVER_URL) {
     const db = await getDB();
     const u = auth(req);
     if (!u) return res.status(401).json({ error: 'Unauthorized' });
-    const files = db.prepare('SELECT * FROM files WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').all(u.id);
+    const files = await db.prepare('SELECT * FROM files WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').all(u.id);
     res.json({ files });
   });
 
@@ -481,8 +481,8 @@ if (PERSISTENT_SERVER_URL) {
       if (payload.role !== 'admin') throw new Error('Not admin');
     } catch { return res.status(401).json({ error: 'Unauthorized' }); }
     const db = await getDB();
-    const totalUsers = (db.prepare('SELECT COUNT(*) AS c FROM users').get() || {}).c || 0;
-    const dropboxConnections = (db.prepare('SELECT COUNT(DISTINCT user_id) AS c FROM cloud_tokens WHERE provider = ?').get('dropbox') || {}).c || 0;
+    const totalUsers = ((await db.prepare('SELECT COUNT(*) AS c FROM users').get()) || {}).c || 0;
+    const dropboxConnections = ((await db.prepare('SELECT COUNT(DISTINCT user_id) AS c FROM cloud_tokens WHERE provider = ?').get('dropbox')) || {}).c || 0;
     res.json({ totalUsers, dropboxConnections });
   });
 
@@ -495,7 +495,7 @@ if (PERSISTENT_SERVER_URL) {
   app.get('/api/admin/users', async (req, res) => {
     if (!adminAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
     const db = await getDB();
-    const users = db.prepare('SELECT id, email, name, created_at FROM users ORDER BY created_at DESC').all();
+    const users = await db.prepare('SELECT id, email, name, created_at FROM users ORDER BY created_at DESC').all();
     res.json({ users });
   });
 
@@ -511,8 +511,8 @@ if (PERSISTENT_SERVER_URL) {
       const db = await getDB();
       const stmt = db.prepare(sql);
       let result;
-      if (lower.startsWith('select')) { result = stmt.all.apply(stmt, params || []); }
-      else { result = stmt.run.apply(stmt, params || []); }
+      if (lower.startsWith('select')) { result = await stmt.all(...(params || [])); }
+      else { result = await stmt.run(...(params || [])); }
       res.json({ success: true, result });
     } catch (e) { res.status(400).json({ error: e.message }) }
   });
@@ -520,7 +520,7 @@ if (PERSISTENT_SERVER_URL) {
   app.get('/api/admin/settings', async (req, res) => {
     if (!adminAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
     const db = await getDB();
-    const rows = db.prepare('SELECT key, value FROM settings').all();
+    const rows = await db.prepare('SELECT key, value FROM settings').all();
     const settings = {};
     rows.forEach(r => settings[r.key] = r.value);
     res.json({ settings });
@@ -532,10 +532,7 @@ if (PERSISTENT_SERVER_URL) {
     if (!settings || typeof settings !== 'object') return res.status(400).json({ error: 'settings object required' });
     const db = await getDB();
     const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, datetime("now"))');
-    const tx = db.transaction(() => {
-      for (const [key, value] of Object.entries(settings)) upsert.run(key, String(value));
-    });
-    tx();
+    for (const [key, value] of Object.entries(settings)) await upsert.run(key, String(value));
     res.json({ success: true, applied: Object.keys(settings) });
   });
 

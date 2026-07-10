@@ -1,0 +1,16 @@
+{
+  "services": {
+    "diamerna-server": {
+      "root": "."
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "type": "service",
+        "service": "diamerna-server"
+      }
+    }
+  ]
+}
