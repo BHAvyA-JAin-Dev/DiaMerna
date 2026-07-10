@@ -51,3 +51,7 @@ scripts/*.js  # keep source but don't duplicate
 # Server
 server/node_modules/
 server/data/
+
+auth
+auth-wal
+
