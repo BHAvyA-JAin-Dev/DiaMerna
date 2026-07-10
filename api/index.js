@@ -9,7 +9,6 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const http = require('http');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -26,70 +25,10 @@ if (process.env.DROPBOX_CLIENT_ID) {
   OAUTH.dropbox = { client_id: process.env.DROPBOX_CLIENT_ID, client_secret: process.env.DROPBOX_CLIENT_SECRET || '' };
 }
 
-/* === PROXY MODE: forward to persistent server === */
-const PERSISTENT_SERVER_URL = process.env.PERSISTENT_SERVER_URL || '';
+/* ===== ALL-IN-ONE MODE (ephemeral SQLite, no proxy) ===== */
+console.log('⚡ All-in-one mode');
 
-if (PERSISTENT_SERVER_URL) {
-  console.log('🔄 Proxy mode →', PERSISTENT_SERVER_URL);
-  /* In proxy mode, forward all /api/* to the persistent server */
-  app.all('/api/*', (req, res) => {
-    const targetUrl = PERSISTENT_SERVER_URL.replace(/\/+$/, '') + req.url;
-    const parsed = new URL(targetUrl);
-    const mod = parsed.protocol === 'https:' ? https : http;
-
-    let body = null;
-    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
-      body = [];
-      req.on('data', c => body.push(c));
-      req.on('end', () => {
-        body = Buffer.concat(body);
-        doProxy();
-      });
-    } else {
-      doProxy();
-    }
-
-    function doProxy() {
-      const opts = {
-        hostname: parsed.hostname,
-        port: parsed.port || (mod === https ? 443 : 80),
-        path: parsed.pathname + parsed.search,
-        method: req.method,
-        headers: { ...req.headers, host: parsed.hostname },
-        timeout: 30000
-      };
-      if (body && body.length > 0) opts.headers['Content-Length'] = Buffer.byteLength(body);
-      const r = mod.request(opts, r2 => {
-        res.writeHead(r2.statusCode, r2.headers);
-        r2.pipe(res);
-      });
-      r.on('error', () => {
-        res.status(502).json({ error: 'Persistent server unreachable. Set PERSISTENT_SERVER_URL correctly.' });
-      });
-      if (body && body.length > 0) r.write(body);
-      r.end();
-    }
-  });
-
-  /* Static files still served from Vercel */
-  app.use(express.static(ROOT, { maxAge: 0, etag: false }));
-  app.get('*', (req, res) => {
-    const fp = path.join(ROOT, req.path === '/' ? 'index.html' : req.path);
-    if (fs.existsSync(fp)) {
-      const ext = path.extname(fp).toLowerCase();
-      const mime = { '.html':'text/html','.css':'text/css','.js':'application/javascript','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon','.woff2':'font/woff2' };
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Content-Type', mime[ext] || 'application/octet-stream');
-      res.sendFile(fp);
-    } else {
-      res.sendFile(path.join(ROOT, 'index.html'));
-    }
-  });
-} else {
-  /* ===== STANDALONE MODE (original, ephemeral SQLite) ===== */
-  console.log('⚡ Standalone mode (ephemeral DB)');
-
-  const rateLimitMap = new Map();
+const rateLimitMap = new Map();
   function rateLimit(ip, email) {
     const key = ip + '|' + (email || 'unknown');
     const now = Date.now();
@@ -581,12 +520,11 @@ if (PERSISTENT_SERVER_URL) {
       res.sendFile(path.join(ROOT, 'index.html'));
     }
   });
-}
 
 if (!process.env.VERCEL) {
   getDB().then(db => {
     const port = process.env.PORT || 5500;
-    app.listen(port, () => console.log('DiaMerna local → http://localhost:' + port + ' | Server: ' + (PERSISTENT_SERVER_URL || 'standalone')));
+    app.listen(port, () => console.log('DiaMerna local → http://localhost:' + port));
   }).catch(e => { console.error('DB init failed', e); process.exit(1) });
 }
 

@@ -23,14 +23,14 @@ app.use(cors())
 app.use(express.json({ limit: '50mb' }))
 
 /* ===== Persistent Database (better-sqlite3) ===== */
-const DB_DIR = process.env.DB_DIR || (process.env.VERCEL ? '/tmp/data' : path.join(__dirname, 'data'))
-const DB_PATH = path.join(DB_DIR, 'diamerna.db')
-if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true })
-
+const DB_DIR = "(local dev)"
+const DB_PATH = "(local dev)"
 let db
 function initDB() {
   const Database = require('better-sqlite3')
-  db = new Database(DB_PATH)
+  const dir = path.join(__dirname, 'data')
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+  db = new Database(path.join(dir, 'diamerna.db'))
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
 
