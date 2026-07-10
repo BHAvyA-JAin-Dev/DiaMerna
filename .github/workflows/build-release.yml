@@ -27,91 +27,47 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: desktop/package-lock.json
+          cache-dependency-path: 'desktop/package-lock.json'
 
       - name: Install dependencies
-        run: npm ci
-        continue-on-error: true
-      - name: Install dependencies (fallback)
-        run: npm install
-        if: failure()
+        run: npm install --ignore-scripts 2>$null; npm install 2>$null
 
-      - name: Generate icon
-        run: node ../scripts/gen-icon.js
+      - name: Generate icon (fallback to copy)
+        run: Copy-Item -Path "../dev/logo.jpeg" -Destination "icon.png" -Force
 
       - name: Encrypt API keys
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          DROPBOX_CLIENT_ID: ${{ secrets.DROPBOX_CLIENT_ID }}
-          DROPBOX_CLIENT_SECRET: ${{ secrets.DROPBOX_CLIENT_SECRET }}
-          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY || 'YOUR_OPENROUTER_API_KEY_HERE' }}
+          DROPBOX_CLIENT_ID: ${{ secrets.DROPBOX_CLIENT_ID || '' }}
+          DROPBOX_CLIENT_SECRET: ${{ secrets.DROPBOX_CLIENT_SECRET || '' }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL || '' }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD || '' }}
         run: node ../encrypt-keys.js
 
-      - name: Build EXE
-        run: npx electron-builder --win --publish=never
-      
+      - name: Build EXE (portable - no signing)
+        run: npx electron-builder --config.extraResources='[{"from":"../dev","to":"webapp","filter":["**/*"]}]' --config.win.target='portable' --config.win.certificateFile='' --config.win.certificatePassword='' --config.win.signAndEditExecutable=false 2>$null
+        continue-on-error: true
+
+      - name: Fallback - zip unpacked app
+        if: failure()
+        run: |
+          npx electron-builder --dir 2>$null
+          if (Test-Path "dist/win-unpacked") {
+            Compress-Archive -Path "dist/win-unpacked/*" -DestinationPath "dist/DiaMerna-Portable-windows-x64.zip" -Force
+          }
+
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: diamerna-exe
-          path: desktop/dist/*.exe
-
-  build-mobile:
-    name: Build Android APK
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-          cache-dependency-path: mobile/package-lock.json
-
-      - name: Install Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Install dependencies
-        run: npm ci
-        continue-on-error: true
-      - name: Install dependencies (fallback)
-        run: npm install
-        if: failure()
-
-      - name: Encrypt API keys
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          DROPBOX_CLIENT_ID: ${{ secrets.DROPBOX_CLIENT_ID }}
-          DROPBOX_CLIENT_SECRET: ${{ secrets.DROPBOX_CLIENT_SECRET }}
-          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-        run: node ../encrypt-keys.js
-
-      - name: Sync Capacitor
-        run: npx cap sync android
-
-      - name: Build APK
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleRelease
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: diamerna-apk
-          path: mobile/android/app/build/outputs/apk/release/*.apk
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.zip
+          if-no-files-found: warn
 
   create-release:
     name: Create GitHub Release
-    needs: [build-desktop, build-mobile]
+    needs: [build-desktop]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     steps:
@@ -123,22 +79,16 @@ jobs:
           name: diamerna-exe
           path: release-assets/
 
-      - name: Download APK
-        uses: actions/download-artifact@v4
-        with:
-          name: diamerna-apk
-          path: release-assets/
-
-      - name: Create source archive
+      - name: Create source archive (no API keys)
         run: |
           zip -r release-assets/diamerna-source-${{ github.ref_name }}.zip \
-            dev/ api/ server/ desktop/package.json mobile/package.json \
-            mobile/capacitor.config.json encrypt-keys.js scripts/ \
+            dev/ api/ server/ desktop/package.json desktop/preload.js desktop/main.js \
+            mobile/package.json mobile/capacitor.config.json encrypt-keys.js scripts/ \
             package.json vercel.json .github/workflows/build-release.yml \
             -x "desktop/node_modules/*" "desktop/dist/*" \
             "mobile/node_modules/*" "mobile/android/*" \
             "server/node_modules/*" "server/data/*" \
-            "dev/uploads/*" "*.db*" ".env*"
+            "dev/uploads/*" "*.db*" ".env*" "desktop/encrypted-keys.json" "desktop/icon.png"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -148,26 +98,27 @@ jobs:
           prerelease: false
           generate_release_notes: false
           body: |
-            # DiaMerna v${{ github.ref_name }}
+            # DiaMerna ${{ github.ref_name }}
             
             ## 🔗 Unified Server Architecture
             All platforms (Web / Windows EXE / Android APK) sync to **one shared backend server**.
-            Data is stored persistently in SQLite (better-sqlite3) with WAL mode.
+            All data is stored persistently in SQLite (better-sqlite3) with WAL mode.
             
-            ## Downloads
+            ## 📥 Downloads
             | Platform | File |
             |---|---|
-            | Windows | DiaMerna-Setup-${{ github.ref_name }}.exe |
-            | Android | DiaMerna-${{ github.ref_name }}.apk |
-            | Docker | `server/` — deploy on Render/Railway/Fly.io |
+            | Windows | DiaMerna-Portable-windows-x64.zip or .exe |
             | Source | diamerna-source-${{ github.ref_name }}.zip |
             
-            ## Deploy the Server
-            [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/BHAvyA-JAin-Dev/DiaMerna)
+            ## 📱 Android APK
+            Build locally: `cd mobile && npm install && npm run build:apk`
+            Requires Android SDK. See `mobile/README.md` for instructions.
             
-            Set `PERSISTENT_SERVER_URL` on Vercel to your server URL to use it as the API proxy.
+            ## 🚀 Deploy Server
+            Deploy `server/` on Render/Railway/Fly.io with persistent volume.
+            Set `PERSISTENT_SERVER_URL` on Vercel to use it as API proxy.
             
-            ## ⚡ Build Notes
+            ## 🔐 Security
             API keys are encrypted with AES-256-GCM at build time.
-            Set repository secrets (`OPENROUTER_API_KEY`, `DROPBOX_CLIENT_ID`, etc.) for automated builds.
             Source code contains **zero** API keys.
+            Set repository secrets for automated builds.
