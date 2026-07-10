@@ -47,3 +47,7 @@ scripts/*.js  # keep source but don't duplicate
 *.AppImage
 *.apk
 *.aab
+
+# Server
+server/node_modules/
+server/data/
